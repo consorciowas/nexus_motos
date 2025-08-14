@@ -346,77 +346,132 @@ def busqueda_accesorios(request):
 
 def detalle_accesorio(request, prod_id):
     producto = TblProducto.objects.get(prod_id=prod_id)
+
     try:
         kardex = TblKardex.objects.get(prod=producto)
+        stock_actual = int(kardex.kardex_stock_actual or 0)
         precio = kardex.kardex_precio_vigente
-        stock_actual = kardex.kardex_stock_actual
     except TblKardex.DoesNotExist:
-        kardex = None
+        stock_actual = 0
         precio = None
-        stock_actual = None
 
     tallas = TblProductoTalla.objects.filter(prod=producto)
-    
+
+    # Verificar si ya está en el carrito y ajustar stock disponible
+    carrito = request.session.get('carrito', {})
+    cantidades_en_carrito = {}
+
+    for key, item in carrito.items():
+        # clave puede ser "prodid" o "prodid_talla"
+        pid_session = str(item.get('prod_id') or str(key).split('_')[0])
+        if str(prod_id) != pid_session:
+            continue
+
+        talla_item = (item.get('talla') or '')
+        cantidades_en_carrito[talla_item] = cantidades_en_carrito.get(talla_item, 0) + int(item.get('cantidad', 0))
+
+    en_carrito = cantidades_en_carrito.get('', 0)
+
+    if not tallas.exists():
+        stock_disponible = max(0, stock_actual - en_carrito)
+    else:
+        stock_disponible = None
+        for talla in tallas:
+            cant_carrito_talla = cantidades_en_carrito.get(talla.prod_talla_codigo, 0)
+            talla.en_carrito = cant_carrito_talla
+            talla.stock_disponible = max(0, int(talla.prod_talla_stock or 0) - cant_carrito_talla)
 
     relacionados = TblProducto.objects.filter(
-        prod_codigo=producto.prod_codigo
-    ).exclude(prod_id=prod_id)[:5]
-    #relacionados = TblProducto.objects.filter(
-    #    prod_codigo=producto.prod_codigo,
-    #    tblkardex__isnull=False
-    #).exclude(prod_id=prod_id).select_related('tblkardex')[:5]
+        prod_codigo=producto.prod_codigo,
+        tblkardex__isnull=False
+    ).exclude(prod_id=prod_id).select_related('tblkardex')[:5]
 
     return render(request, "catalogo/detalle_accesorio.html", {
         "producto": producto,
         "precio": precio,
         "stock_actual": stock_actual,
-        "tallas": tallas,
+        "stock_disponible": stock_disponible,     # solo sin tallas
+        "en_carrito": en_carrito,                 # solo sin tallas
+        "tallas": tallas,                         # cada talla trae .stock_disponible y .en_carrito
         "relacionados": relacionados,
     })
 
 @require_POST
 def agregar_a_carrito(request):
     data = json.loads(request.body)
-    prod_id = data['prod_id']
-    prod_marca = data['prod_marca']
-    prod_codigo = data['prod_codigo']
-    prod_modelo = data['prod_modelo']
-    prod_tono = data['prod_tono']
-    prod_precio = float(data['prod_precio'])
-    prod_imagen = data['prod_imagen']
-    stock_actual = int(data['stock_actual'])
-    talla = data['talla']
-    cantidad = int(data['cantidad'])
 
-    key = f"{prod_id}_{talla}" if talla else prod_id
+    prod_id = int(data['prod_id'])
+    prod_marca = data.get('prod_marca', '')
+    prod_codigo = data.get('prod_codigo', '')
+    prod_modelo = data.get('prod_modelo', '')
+    prod_tono = data.get('prod_tono', '')
+    prod_imagen = data.get('prod_imagen', '')
+    talla = (data.get('talla') or '').strip()  # código de talla, si aplica
+    cantidad = int(data.get('cantidad', 1))
 
+    # 1) Obtener producto y precio/stock desde BD
+    producto = get_object_or_404(TblProducto, prod_id=prod_id)
+
+    precio = 0.0
+    stock_db = 0
+
+    try:
+        kardex = TblKardex.objects.get(prod=producto)
+        precio = float(kardex.kardex_precio_vigente or 0)
+        stock_db = int(kardex.kardex_stock_actual or 0)
+    except TblKardex.DoesNotExist:
+        # Si no hay kardex, queda stock_db = 0
+        pass
+
+    # Si hay talla, el stock real es el de esa talla
+    if talla:
+        talla_obj = get_object_or_404(
+            TblProductoTalla,
+            prod=producto,
+            prod_talla_codigo=talla
+        )
+        stock_db = int(talla_obj.prod_talla_stock or 0)
+
+    # 2) Leer carrito de SESSION
     carrito = request.session.get('carrito', {})
 
+    # clave de item - estructura: "prodId_talla" o "prodId"
+    key = f"{prod_id}_{talla}" if talla else str(prod_id)
+
+    cantidad_en_carrito = 0
     if key in carrito:
-        nueva_cantidad = carrito[key]['cantidad'] + cantidad
-        carrito[key]['stock'] = stock_actual
-        if nueva_cantidad > stock_actual:
-            return JsonResponse({'success': False, 'mensaje': 'Stock insuficiente'})
-        
-        carrito[key]['cantidad'] = nueva_cantidad
+        cantidad_en_carrito = int(carrito[key].get('cantidad', 0))
+
+    disponible = max(0, stock_db - cantidad_en_carrito)
+    if cantidad > disponible:
+        # No permitir pasarse del stock disponible real
+        return JsonResponse({
+            'success': False,
+            'mensaje': f'Stock insuficiente. {disponible} disponibles.'
+        })
+
+    # 3) Agregar/actualizar item en carrito
+    if key in carrito:
+        carrito[key]['cantidad'] = cantidad_en_carrito + cantidad
+        carrito[key]['stock'] = stock_db         # guardamos referencia de stock actual
+        carrito[key]['precio'] = precio          # mantenemos precio vigente
     else:
         carrito[key] = {
+            'prod_id': prod_id,                  # útil para la vista detalle
             'marca': prod_marca,
             'codigo': prod_codigo,
             'modelo': prod_modelo,
             'tono': prod_tono,
-            'precio': prod_precio,
+            'precio': precio,
             'imagen': prod_imagen,
-            'stock': stock_actual,
+            'stock': stock_db,
             'cantidad': cantidad,
             'talla': talla
         }
 
     request.session['carrito'] = carrito
-    
-    total_items = sum(item['cantidad'] for item in carrito.values())
+    total_items = sum(int(item['cantidad']) for item in carrito.values())
     request.session['carrito_total'] = total_items
-
     request.session.modified = True
 
     return JsonResponse({

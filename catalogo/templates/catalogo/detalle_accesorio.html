@@ -9,81 +9,120 @@
 
 {% block content %}
 <div class="container-fluid mt-4 mb-4">
-    <div class="container py-5">
-        <div class="row align-items-center">
-            <div class="col-md-6 text-center">
-                <img src="{% static 'tienda/img/' %}{{ producto.prod_imagen }}" alt="{{ producto.prod_nombre }}" class="img-fluid">
-            </div>
-            <div class="col-md-6">
-                <h4 class="fw-bold">{{ producto.prod_modelo }}</h4>
-                {% if stock_actual and stock_actual > 0 %}
-                <h3 class="text-primary fw-bold">S/. {{ precio|floatformat:2 }}</h3>
-                {% else %}
-                <h3 class="text-secondary fw-bold">Agotado</h3>
-                {% endif %}
-                <p class="mt-3"><strong>Detalles:</strong><br>{{ producto.prod_descripcion }}</p>
-                <div class="d-flex gap-2">
-                    {% for talla in tallas %}
-                        {% if talla.prod_talla_stock == 0 %}
-                            <button class="btn btn-outline-secondary text-decoration-underline" disabled>{{ talla.prod_talla_codigo }}</button>
-                        {% else %}
-                            <button class="btn btn-outline-primary btn-talla" data-talla="{{ talla.prod_talla_codigo }}" data-stock="{{ talla.prod_talla_stock }}">{{ talla.prod_talla_codigo }}</button>
-                        {% endif %}
-                    {% endfor %}
-                </div>
-                {% if stock_actual and stock_actual > 0 %}
-                <div class="mt-3 d-flex align-items-center gap-2">
-                    <button id="btn-disminuir" class="btn btn-secondary" disabled>-</button>
-                    <input type="text" id="cantidad" name="cantidad" class="form-control text-center" style="width: 50px;" value="1" data-max="{% if not tallas %}{{ stock_actual }}{% endif %}" readonly>
-                    <button id="btn-aumentar" class="btn btn-secondary" disabled>+</button>
-                    <span id="spanStockActual" class="ms-2 text-muted">{% if not tallas %}Máximo {{ stock_actual }} unidades.{% endif %}</span>
-                </div>
-                <div class="mt-3 d-flex align-items-center gap-2">
-                    <button id="btn-agregar-carrito" class="btn btn-success mt-3" data-prod-id="{{ producto.prod_id }}" data-cant-tallas="{{ tallas|length }}" data-stock-actual="{% if not tallas %}{{ stock_actual }}{% endif %}">
-                        Agregar a carrito
-                    </button>
-                    <span id="alert-agregar-carrito" class="ms-2 text-muted"></span>
-                </div>
-                <input type="hidden" id="prodMarca" name="prodMarca" value="{{ producto.prod_marca }}">
-                <input type="hidden" id="prodCodigo" name="prodCodigo" value="{{ producto.prod_codigo }}">
-                <input type="hidden" id="prodModelo" name="prodModelo" value="{{ producto.prod_modelo }}">
-                <input type="hidden" id="prodTono" name="prodTono" value="{{ producto.prod_tono }}">
-                <input type="hidden" id="prodPrecio" name="prodPrecio" value="{{ precio|default:0|floatformat:2 }}">
-                <input type="hidden" id="prodImagen" name="prodImagen" value="{{ producto.prod_imagen }}">
-                {% endif %}
-            </div>
-        </div>
+  <div class="container py-5">
+    <div class="row align-items-center">
+      <div class="col-md-6 text-center">
+        <img src="{% static 'tienda/img/' %}{{ producto.prod_imagen }}" alt="{{ producto.prod_nombre }}" class="img-fluid">
+      </div>
 
-        <!-- Productos relacionados -->
-        <div class="mt-5">
-            <h5 class="text-center mb-4">Productos relacionados</h5>
+      <div class="col-md-6">
+        <h4 class="fw-bold">{{ producto.prod_modelo }}</h4>
 
-            <div class="swiper mySwiper">
-                <div class="swiper-wrapper">
-                    {% for rel in relacionados %}
-                        <div class="swiper-slide">
-                            <div class="card h-100">
-                                <img src="{% static 'tienda/img/' %}{{ rel.prod_imagen }}" class="card-img-top img-producto" alt="{{ rel.prod_modelo }}">
-                                <div class="card-body">
-                                    <h6 class="text-danger fw-bold">{{ rel.prod_marca }}</h6>
-                                    <p class="mb-1">{{ rel.prod_modelo }}</p>
-                                    <p class="fw-bold text-primary">S/. {{ rel.tblkardex.kardex_precio_vigente|floatformat:2 }}</p>
-                                    <a href="{% url 'detalle_accesorio' rel.prod_id %}" class="btn btn-sm btn-outline-primary mt-2">Ver</a>
-                                </div>
-                            </div>
-                        </div>
-                    {% endfor %}
-                </div>
+        {% if precio and stock_actual and stock_actual > 0 %}
+          <h3 class="text-primary fw-bold">S/. {{ precio|floatformat:2 }}</h3>
+        {% else %}
+          <h3 class="text-secondary fw-bold">Agotado</h3>
+        {% endif %}
 
-                <!-- Controles del slider -->
-                <div class="swiper-button-next"></div>
-                <div class="swiper-button-prev"></div>
-                <div class="swiper-pagination"></div>
-            </div>
-        </div>
+        <p class="mt-3"><strong>Detalles:</strong><br>{{ producto.prod_descripcion }}</p>
+
+        <!-- Tallas (sin modal) -->
+        {% if tallas %}
+          <div class="d-flex gap-2 mb-2">
+            {% for talla in tallas %}
+              {% if talla.stock_disponible|default:0 <= 0 %}
+                <button class="btn btn-outline-secondary text-decoration-underline" disabled>
+                  {{ talla.prod_talla_codigo }}
+                </button>
+              {% else %}
+                <button class="btn btn-outline-primary btn-talla"
+                        data-talla="{{ talla.prod_talla_codigo }}"
+                        data-stock-disponible="{{ talla.stock_disponible }}"
+                        data-en-carrito="{{ talla.en_carrito|default:0 }}">
+                  {{ talla.prod_talla_codigo }}
+                </button>
+              {% endif %}
+            {% endfor %}
+          </div>
+        {% endif %}
+
+        {% if precio %}
+          <!-- Cantidad + stock -->
+          <div class="mt-3 d-flex align-items-center gap-2">
+            <button id="btn-disminuir" class="btn btn-secondary" disabled>-</button>
+            <input type="text" id="cantidad" name="cantidad" class="form-control text-center" style="width: 50px;" value="1" readonly>
+            <button id="btn-aumentar" class="btn btn-secondary" disabled>+</button>
+
+            {% if tallas %}
+              <span id="spanStockActual" class="ms-2 text-muted" data-stock-disponible="0">
+                Seleccione una talla
+              </span>
+            {% else %}
+              {% if stock_disponible|default:0 > 0 %}
+                <span id="spanStockActual" class="ms-2 text-muted"
+                      data-stock-disponible="{{ stock_disponible }}">
+                  {{ stock_disponible }} disponibles
+                </span>
+              {% else %}
+                <span id="spanStockActual" class="ms-2 text-muted"
+                      data-stock-disponible="0">
+                  Agotado
+                </span>
+              {% endif %}
+            {% endif %}
+          </div>
+
+          <!-- Botón agregar -->
+          <div class="mt-3 d-flex align-items-center gap-2">
+            <button id="btn-agregar-carrito"
+                    class="btn btn-success mt-3"
+                    data-prod-id="{{ producto.prod_id }}"
+                    data-cant-tallas="{{ tallas|length }}"
+                    data-en-carrito="{% if tallas %}0{% else %}{{ en_carrito|default:0 }}{% endif %}">
+              Agregar a carrito
+            </button>
+            <span id="alert-agregar-carrito" class="ms-2 text-muted"></span>
+          </div>
+
+          <!-- Hidden inputs que usa tu JS -->
+          <input type="hidden" id="prodMarca" value="{{ producto.prod_marca }}">
+          <input type="hidden" id="prodCodigo" value="{{ producto.prod_codigo }}">
+          <input type="hidden" id="prodModelo" value="{{ producto.prod_modelo }}">
+          <input type="hidden" id="prodTono" value="{{ producto.prod_tono }}">
+          <input type="hidden" id="prodPrecio" value="{{ precio|default:0|floatformat:2 }}">
+          <input type="hidden" id="prodImagen" value="{{ producto.prod_imagen }}">
+        {% endif %}
+      </div>
     </div>
-</div>
 
+    <!-- Productos relacionados -->
+    <div class="mt-5">
+      <h5 class="text-center mb-4">Productos relacionados</h5>
+
+      <div class="swiper mySwiper">
+        <div class="swiper-wrapper">
+          {% for rel in relacionados %}
+            <div class="swiper-slide">
+              <div class="card h-100">
+                <img src="{% static 'tienda/img/' %}{{ rel.prod_imagen }}" class="card-img-top img-producto" alt="{{ rel.prod_modelo }}">
+                <div class="card-body">
+                  <h6 class="text-danger fw-bold">{{ rel.prod_marca }}</h6>
+                  <p class="mb-1">{{ rel.prod_modelo }}</p>
+                  <p class="fw-bold text-primary">S/. {{ rel.tblkardex.kardex_precio_vigente|floatformat:2 }}</p>
+                  <a href="{% url 'detalle_accesorio' rel.prod_id %}" class="btn btn-sm btn-outline-primary mt-2">Ver</a>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+
+        <div class="swiper-button-next"></div>
+        <div class="swiper-button-prev"></div>
+        <div class="swiper-pagination"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Modal para confirmar cantidad -->
 <div class="modal fade" id="modalConfirmacion" data-bs-backdrop="static" tabindex="-1" aria-labelledby="modalConfirmacionLabel" aria-hidden="true">
