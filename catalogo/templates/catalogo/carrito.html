@@ -7,78 +7,119 @@
 
 {% block content %}
 <div class="container-fluid mt-4 mb-4">
-    <div class="container py-5">
-        <div class="row" id="carrito-contenido">
-            {% if total > 0 %}
-            <!-- Carrito -->
-            <div class="col-lg-8">
-                <h4 class="fw-bold mb-4">Carro ({{ cantidad_total }} productos)</h4>
+  <div class="container py-5">
+    <div class="row" id="carrito-contenido">
+      {% if total > 0 %}
+      <!-- Col izquierda: Items -->
+      <div class="col-lg-8">
+        <h4 class="fw-bold mb-4">Carro (<span id="carro-cant">{{ cantidad_total }}</span> productos)</h4>
 
-                {% for p in productos %}
-                <div class="producto-carrito bg-white rounded p-3 mb-3 shadow-sm" data-key="{{ p.key }}">
-                    <div class="d-flex">
-                        <!-- Imagen width: 100px-->
-                        <img src="{% static 'tienda/img/' %}{{ p.imagen }}" alt="producto" style="width: 20%; height: auto;" class="rounded me-3">
+        {% for p in productos %}
+        <div class="producto-carrito bg-white rounded p-3 mb-3 shadow-sm"
+             data-key="{{ p.key }}"
+             data-cantidad="{{ p.cantidad }}"
+             data-stock="{{ p.stock }}"
+             data-estado="{{ p.estado }}"
+             data-precio="{{ p.precio|floatformat:2 }}">
+          <div class="d-flex">
+            <!-- Imagen -->
+            <img src="{% static 'tienda/img/' %}{{ p.imagen }}" alt="producto" style="width: 20%; height: auto;" class="rounded me-3">
 
-                        <!-- Detalles -->
-                        <div class="flex-grow-1">
-                            <h6 class="mb-1 fw-semibold">{{ p.codigo }} {{ p.marca }} {{ p.modelo }}</h6>
-                            <p class="text-muted mb-1 small text-uppercase">{{ p.marca }}</p>
-                            <p class="mb-2">Color: <strong>{{ p.tono }}</strong> {% if p.talla %}| Talla: <strong>{{ p.talla }}</strong>{% endif %}</p>
-                            
-                            <!-- Chips de envío -->
-                            <div class="d-flex gap-2 mb-2">
-                                <span class="badge bg-light text-success border border-success">Retira mañana</span>
-                            </div>
+            <!-- Detalles -->
+            <div class="flex-grow-1">
+              <h6 class="mb-1 fw-semibold">{{ p.codigo }} {{ p.marca }} {{ p.modelo }}</h6>
+              <p class="text-muted mb-1 small text-uppercase">{{ p.marca }}</p>
+              <p class="mb-2">
+                Color: <strong>{{ p.tono }}</strong>
+                {% if p.talla %}| Talla: <strong>{{ p.talla }}</strong>{% endif %}
+              </p>
 
-                            <!-- Precio -->
-                            <p class="fw-bold fs-5 text-danger">S/ {{ p.precio|floatformat:2 }}</p>
-                        </div>
-
-                        <!-- Controles -->
-                        <div class="d-flex flex-column align-items-end justify-content-between">
-                            <button class="btn btn-link text-dark btn-eliminar">Eliminar</button>
-                            <div class="d-flex align-items-center">
-                                <button class="btn btn-outline-secondary btn-sm">-</button>
-                                <span class="mx-2">{{ p.cantidad }}</span>
-                                <button class="btn btn-outline-secondary btn-sm">+</button>
-                            </div>
-                            <small class="text-muted mt-1">Máx {{ p.stock }} unidades</small>
-                        </div>
-                    </div>
+              <!-- Chips de envío -->
+              {% if p.stock > 0 %}
+                <div class="d-flex gap-2 mb-2">
+                  <span class="badge bg-light text-success border border-success">Retira mañana</span>
                 </div>
-                {% endfor %}
+              {% endif %}
+
+              <!-- Precio -->
+              <p class="fw-bold fs-5 text-danger m-0">S/ {{ p.precio|floatformat:2 }}</p>
             </div>
 
-            <!-- Resumen -->
-            <div class="col-lg-4">
-                <h4 class="fw-bold mb-3">Resumen de la orden</h4>
-                <div class="bg-white rounded p-4 shadow-sm">
-                    <div class="d-flex justify-content-between mb-2">
-                        <span>Productos ({{ cantidad_total }})</span>
-                        <span>S/ {{ total|floatformat:2 }}</span>
-                    </div>
-                    <div class="d-flex justify-content-between fw-semibold mb-4">
-                        <span>Total:</span>
-                        <span>S/ {{ total|floatformat:2 }}</span>
-                    </div>
-                    <button class="btn btn-dark w-100 rounded-pill">Continuar compra</button>
-                </div>
+            <!-- Controles -->
+            <div class="d-flex flex-column align-items-end justify-content-between">
+              <button class="btn btn-link {% if p.estado == 'agotado' %}btn-eliminar-alerta{% else %}text-dark{% endif %} btn-eliminar">Eliminar</button>
+
+              <div class="d-flex align-items-center">
+                <button class="btn btn-outline-secondary btn-sm contador-btn btn-menos"
+                        {% if p.estado == 'agotado' or p.cantidad|add:'-1' < 1 %}disabled{% endif %}>-</button>
+
+                <span class="mx-2 cantidad fw-semibold">{{ p.cantidad }}</span>
+
+                <button class="btn btn-outline-secondary btn-sm contador-btn btn-mas"
+                        {% if p.estado == 'agotado' or p.estado == 'excede' or p.estado == 'igual' %}disabled{% endif %}>+</button>
+              </div>
+
+              {% if p.stock > 0 %}
+                <small class="mt-1 max-label {% if p.estado == 'excede' or p.estado == 'igual' %}estado-alerta{% else %}estado-max{% endif %}">
+                  Máx {{ p.stock }} unidades
+                </small>
+              {% else %}
+                <small class="mt-1 max-label estado-alerta">Agotado</small>
+              {% endif %}
             </div>
-            {% else %}
-            <div class="text-center">
-                <h4 class="text-secondary fw-bold">Tu Carrito está vacío</h4>
-            </div>
-            {% endif %}
+          </div>
         </div>
+        {% endfor %}
+      </div>
+
+      <!-- Col derecha: Resumen -->
+      <div class="col-lg-4">
+        <h4 class="fw-bold mb-3">Resumen de la orden</h4>
+        <div class="bg-white rounded p-4 shadow-sm">
+          <div class="d-flex justify-content-between mb-2">
+            <span>Productos (<span id="resumen-cant">{{ cantidad_total }}</span>)</span>
+            <span>S/ <span id="resumen-subtotal">{{ total|floatformat:2 }}</span></span>
+          </div>
+          <div class="d-flex justify-content-between fw-semibold mb-3">
+            <span>Total:</span>
+            <span>S/ <span id="resumen-total">{{ total|floatformat:2 }}</span></span>
+          </div>
+
+          <button id="btn-checkout" class="btn btn-dark w-100 rounded-pill"
+                  {% if bloqueo_checkout %}disabled{% endif %}>
+            Continuar compra
+          </button>
+
+          <div id="alerta-checkout"
+               class="alert alert-light border mt-3 {% if not bloqueo_checkout %}d-none{% endif %}">
+            <strong>Límite de unidades por producto excedido</strong>
+            <div class="small">
+              Para continuar con tu compra, revisa en el Carro los productos con alerta y disminuye la cantidad de unidades.
+            </div>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="text-center py-5">
+        <h4 class="text-secondary fw-bold">Tu Carrito está vacío</h4>
+      </div>
+      {% endif %}
     </div>
+  </div>
 </div>
 
-{% endblock%}
+<!-- Overlay con Spinner -->
+<div id="overlay-spinner" style="display: none;">
+    <div class="loading-content">
+        <span class="spinner-border text-light" role="status"></span>
+        <p class="text-light mt-3">Procesando...</p>
+    </div>
+</div>
+{% endblock %}
 
 {% block extra_js %}
 <script>
-    const CSRF_TOKEN = '{{ csrf_token }}';
+  const CSRF_TOKEN = '{{ csrf_token }}';
 </script>
 <script src="{% static 'catalogo/js/carrito.js' %}"></script>
 {% endblock %}

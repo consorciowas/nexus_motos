@@ -480,48 +480,222 @@ def agregar_a_carrito(request):
         'total_items': total_items
     })
 
+def _stock_actual_item(item):
+    """
+    Devuelve el stock actual desde BD para el item del carrito.
+    Si trae talla -> stock por talla. Si no, stock del kardex.
+    """
+    prod_id = int(item.get('prod_id', 0) or 0)
+    talla = (item.get('talla') or '').strip()
+
+    try:
+        producto = TblProducto.objects.get(prod_id=prod_id)
+    except TblProducto.DoesNotExist:
+        return 0
+
+    if talla:
+        talla_obj = TblProductoTalla.objects.filter(
+            prod=producto, prod_talla_codigo=talla
+        ).first()
+        return int(talla_obj.prod_talla_stock or 0) if talla_obj else 0
+
+    kardex = TblKardex.objects.filter(prod=producto).first()
+    return int(kardex.kardex_stock_actual or 0) if kardex else 0
+
+
+def _estado_item(cantidad, stock):
+    """
+    Retorna uno de: 'agotado', 'excede', 'igual', 'ok'
+    Según las casuísticas que pediste.
+    """
+    if stock <= 0:
+        return 'agotado'
+    if cantidad > stock:
+        return 'excede'
+    if cantidad == stock:
+        return 'igual'
+    return 'ok'
+
+
+def _recalcular_resumen_y_bloqueo(carrito):
+    """
+    Recalcula total, cantidad_total, total_items (para el badge),
+    y si el checkout debe bloquearse (algún item excede o está agotado).
+    """
+    total = 0.0
+    cantidad_total = 0
+    bloqueo_checkout = False
+
+    for it in carrito.values():
+        cant = int(it.get('cantidad', 0) or 0)
+        precio = float(it.get('precio', 0) or 0)
+        total += cant * precio
+        cantidad_total += cant
+
+        stock_db = _stock_actual_item(it)
+        estado = _estado_item(cant, stock_db)
+        if estado in ('agotado', 'excede'):
+            bloqueo_checkout = True
+
+    total_items = cantidad_total
+    return total, cantidad_total, total_items, bloqueo_checkout
+
+
 def vista_carrito(request):
     carrito = request.session.get('carrito', {})
 
-    # Convertimos a una lista de tuplas (key, producto_dict)
-    productos = [
-        {
-            'key': key,
-            **item
-        }
-        for key, item in carrito.items()
-    ]
+    productos = []
+    bloqueo_checkout = False
+    total = 0.0
+    cantidad_total = 0
 
-    total = sum(item['precio'] * item['cantidad'] for item in carrito.values())
-    cantidad_total = sum(item['cantidad'] for item in carrito.values())
+    for key, item in carrito.items():
+        stock_db = _stock_actual_item(item)
+        cantidad = int(item.get('cantidad', 0) or 0)
+        precio = float(item.get('precio', 0) or 0)
+        subtotal = cantidad * precio
+        estado = _estado_item(cantidad, stock_db)
+
+        if estado in ('agotado', 'excede'):
+            bloqueo_checkout = True
+
+        productos.append({
+            'key': key,
+            'prod_id': item.get('prod_id'),
+            'codigo': item.get('codigo'),
+            'marca': item.get('marca'),
+            'modelo': item.get('modelo'),
+            'tono': item.get('tono'),
+            'talla': item.get('talla') or None,
+            'precio': precio,
+            'cantidad': cantidad,
+            'imagen': item.get('imagen'),
+            'stock': stock_db,
+            'estado': estado,
+            'subtotal': subtotal,
+        })
+
+        total += subtotal
+        cantidad_total += cantidad
 
     return render(request, 'catalogo/carrito.html', {
         'productos': productos,
         'total': total,
         'cantidad_total': cantidad_total,
+        'bloqueo_checkout': bloqueo_checkout,
     })
 
+
+@require_POST
+def cambiar_cantidad_carrito(request):
+    """
+    Cambia la cantidad de un ítem: delta = +1 o -1.
+    Aplica límites: mínimo 1, máximo stock actual.
+    Actualiza sesión, devuelve UI state, totales y bloqueo checkout.
+    """
+    try:
+        data = json.loads(request.body)
+        key = data.get('key')
+        delta = int(data.get('delta', 0) or 0)
+
+        carrito = request.session.get('carrito', {})
+        if key not in carrito:
+            return JsonResponse({'success': False, 'mensaje': 'Producto no encontrado en el carrito'})
+
+        item = carrito[key]
+        stock_db = _stock_actual_item(item)
+        cantidad_actual = int(item.get('cantidad', 0) or 0)
+
+        # Caso stock 0: no se puede sumar ni restar (quedan deshabilitados)
+        if stock_db <= 0:
+            estado = 'agotado'
+            # no cambiamos cantidad; invitamos a eliminar
+            total, cantidad_total, total_items, bloqueo = _recalcular_resumen_y_bloqueo(carrito)
+            return JsonResponse({
+                'success': True,
+                'item': {
+                    'key': key,
+                    'cantidad': cantidad_actual,
+                    'stock': stock_db,
+                    'estado': estado,
+                    'subtotal': cantidad_actual * float(item.get('precio', 0) or 0)
+                },
+                'resumen': {
+                    'total': total,
+                    'cantidad_total': cantidad_total,
+                    'bloqueo_checkout': bloqueo
+                },
+                'total_items': total_items
+            })
+
+        # Aplicar delta con límites
+        nueva_cantidad = cantidad_actual + delta
+        if nueva_cantidad < 1:
+            nueva_cantidad = 1
+        if nueva_cantidad > stock_db:
+            nueva_cantidad = stock_db
+
+        item['cantidad'] = nueva_cantidad
+        carrito[key] = item
+        request.session['carrito'] = carrito
+        request.session.modified = True
+
+        # Recalcular resumen y bloqueo
+        total, cantidad_total, total_items, bloqueo = _recalcular_resumen_y_bloqueo(carrito)
+
+        # También guardamos el total de items para el badge global
+        request.session['carrito_total'] = total_items
+
+        estado = _estado_item(nueva_cantidad, stock_db)
+
+        return JsonResponse({
+            'success': True,
+            'item': {
+                'key': key,
+                'cantidad': nueva_cantidad,
+                'stock': stock_db,
+                'estado': estado,
+                'subtotal': nueva_cantidad * float(item.get('precio', 0) or 0)
+            },
+            'resumen': {
+                'total': total,
+                'cantidad_total': cantidad_total,
+                'bloqueo_checkout': bloqueo
+            },
+            'total_items': total_items
+        })
+    except Exception as e:
+        return JsonResponse({'success': False, 'mensaje': str(e)})
+
+
+@require_POST
 def eliminar_producto_carrito(request):
-    if request.method == 'POST':
-        try:
-            data = json.loads(request.body)
-            key = data.get('key')
+    try:
+        data = json.loads(request.body)
+        key = data.get('key')
 
-            carrito = request.session.get('carrito', {})
+        carrito = request.session.get('carrito', {})
 
-            if key in carrito:
-                del carrito[key]
-                request.session['carrito'] = carrito
-                
-                total_items = sum(item['cantidad'] for item in carrito.values())
-                request.session['carrito_total'] = total_items
+        if key in carrito:
+            del carrito[key]
+            request.session['carrito'] = carrito
+            request.session.modified = True
 
-                request.session.modified = True
+            total, cantidad_total, total_items, bloqueo = _recalcular_resumen_y_bloqueo(carrito)
 
-                return JsonResponse({'success': True, 'total_items': total_items})
-            else:
-                return JsonResponse({'success': False, 'mensaje': 'Producto no encontrado en el carrito'})
-        except Exception as e:
-            return JsonResponse({'success': False, 'mensaje': str(e)})
-        
-    return JsonResponse({'success': False, 'mensaje': 'Método no permitido'})
+            # También guardamos el total de items para el badge global
+            request.session['carrito_total'] = total_items
+
+            return JsonResponse({
+                'success': True,
+                'total_items': total_items,
+                'resumen': {
+                    'total': total,
+                    'cantidad_total': cantidad_total,
+                    'bloqueo_checkout': bloqueo
+                }
+            })
+        else:
+            return JsonResponse({'success': False, 'mensaje': 'Producto no encontrado en el carrito'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'mensaje': str(e)})
