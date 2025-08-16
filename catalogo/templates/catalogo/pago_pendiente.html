@@ -1,0 +1,16 @@
+{% extends 'catalogo/base.html'%}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'catalogo/css/pago.css' %}" />
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 mb-4">
+    <div class="container text-center mt-5">
+        <h1 class="text-info">⏳ Pago pendiente</h1>
+        <p>Tu pago está siendo procesado. Te notificaremos cuando se confirme.</p>
+        <a href="{% url 'inicio' %}" class="btn btn-secondary mt-3">Volver al inicio</a>
+    </div>
+</div>
+{% endblock %}

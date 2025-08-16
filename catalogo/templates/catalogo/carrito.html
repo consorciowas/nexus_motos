@@ -120,6 +120,9 @@
 {% block extra_js %}
 <script>
   const CSRF_TOKEN = '{{ csrf_token }}';
+  window.MP_PUBLIC_KEY = "{{ MP_PUBLIC_KEY }}";
 </script>
 <script src="{% static 'catalogo/js/carrito.js' %}"></script>
+<!-- SDK de Mercado Pago -->
+<script src="https://sdk.mercadopago.com/js/v2"></script>
 {% endblock %}

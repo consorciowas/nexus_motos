@@ -1,0 +1,12 @@
+.cont-footer {
+    color: white !important;
+    background-color: #323390 !important;
+}
+
+.cont-footer h6 {
+    color: white !important;
+}
+
+.container-fluid.mt-4.mb-4 {
+    flex-grow: 1; /* Si quieres que ese div interno empuje hacia abajo */
+}

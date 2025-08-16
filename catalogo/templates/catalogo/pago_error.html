@@ -1,0 +1,16 @@
+{% extends 'catalogo/base.html'%}
+{% load static %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'catalogo/css/pago.css' %}" />
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 mb-4">
+    <div class="container text-center mt-5">
+        <h1 class="text-danger">❌ Error en el pago</h1>
+        <p>Hubo un problema procesando tu pago. Intenta nuevamente.</p>
+        <a href="{% url 'vista_carrito' %}" class="btn btn-warning mt-3">Volver al carrito</a>
+    </div>
+</div>
+{% endblock %}

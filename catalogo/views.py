@@ -20,6 +20,8 @@ import random
 import string
 import os
 import json
+import traceback
+import mercadopago
 
 def logout_no_cliente(view_func):
     @wraps(view_func)
@@ -470,9 +472,10 @@ def agregar_a_carrito(request):
         }
 
     request.session['carrito'] = carrito
+    request.session.modified = True
+
     total_items = sum(int(item['cantidad']) for item in carrito.values())
     request.session['carrito_total'] = total_items
-    request.session.modified = True
 
     return JsonResponse({
         'success': True,
@@ -506,7 +509,7 @@ def _stock_actual_item(item):
 def _estado_item(cantidad, stock):
     """
     Retorna uno de: 'agotado', 'excede', 'igual', 'ok'
-    Según las casuísticas que pediste.
+    Según las casuísticas.
     """
     if stock <= 0:
         return 'agotado'
@@ -583,6 +586,7 @@ def vista_carrito(request):
         'total': total,
         'cantidad_total': cantidad_total,
         'bloqueo_checkout': bloqueo_checkout,
+        'MP_PUBLIC_KEY': settings.MP_PUBLIC_KEY,
     })
 
 
@@ -699,3 +703,63 @@ def eliminar_producto_carrito(request):
             return JsonResponse({'success': False, 'mensaje': 'Producto no encontrado en el carrito'})
     except Exception as e:
         return JsonResponse({'success': False, 'mensaje': str(e)})
+    
+def crear_preferencia(request):
+    if request.method == "POST":
+        try:
+            # SDK Mercado Pago
+            sdk = mercadopago.SDK(settings.MP_ACCESS_TOKEN)
+
+            carrito = request.session.get("carrito", [])
+
+            if not carrito:
+                return JsonResponse({"error": "El carrito está vacío"}, status=400)
+
+            items = []
+            for producto in carrito.values():
+                items.append({
+                    "title": producto["codigo"],
+                    "description": f"{producto['marca']} {producto['modelo']} {producto['tono']}",
+                    "quantity": int(producto["cantidad"]),
+                    "unit_price": float(producto["precio"]),
+                    "currency_id": "PEN"
+                })
+
+            
+            preference_data = {
+                "items": items,
+                "back_urls": {
+                    "success": request.build_absolute_uri(reverse("pago_exito")),
+                    "failure": request.build_absolute_uri(reverse("pago_error")),
+                    "pending": request.build_absolute_uri(reverse("pago_pendiente"))
+                },
+                #"auto_return": "approved",
+                "payment_methods": {
+                    "installments": 1 #,  # Solo 1 cuota
+                    #"excluded_payment_types": [{"id": "ticket"}]  # Excluir pagos en efectivo
+                }
+            }
+
+            preference_response = sdk.preference().create(preference_data)
+            #print("RESPUESTA MP:", preference_response)  # Para debug en consola
+
+            if "response" not in preference_response or "id" not in preference_response["response"]:
+                return JsonResponse({"error": "No se pudo crear la preferencia"}, status=500)
+
+            preference = preference_response["response"]
+
+            return JsonResponse({"id": preference["id"]})
+
+        except Exception as e:
+            print("ERROR creando preferencia:", e)
+            traceback.print_exc()
+            return JsonResponse({"error": str(e)}, status=500)
+    
+def pago_exito(request):
+    return render(request, "catalogo/pago_exito.html")
+
+def pago_error(request):
+    return render(request, "catalogo/pago_error.html")
+
+def pago_pendiente(request):
+    return render(request, "catalogo/pago_pendiente.html")

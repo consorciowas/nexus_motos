@@ -209,10 +209,28 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnCheckout && alerta) {
     btnCheckout.addEventListener('click', (e) => {
       if (btnCheckout.disabled) {
+        // Si está deshabilitado, solo mostramos el aviso
         e.preventDefault();
         alerta.classList.remove('d-none');
         alerta.classList.add('shake');
         setTimeout(() => alerta.classList.remove('shake'), 600);
+      } else {
+        // Si está habilitado, iniciamos proceso con Mercado Pago
+        fetch('/catalogo/carrito/crear_preferencia/', {
+            method: "POST",
+            headers: { "X-CSRFToken": CSRF_TOKEN }
+        })
+        .then(res => res.json())
+        .then(data => {
+            const mp = new MercadoPago(window.MP_PUBLIC_KEY, { locale: "es-PE" });
+            mp.checkout({
+                preference: { id: data.id },
+                autoOpen: true
+            });
+        })
+        .catch(err => {
+            console.error("Error creando preferencia:", err);
+        });
       }
     });
   }
