@@ -748,6 +748,8 @@ def crear_preferencia(request):
 
             preference = preference_response["response"]
 
+            print(preference)
+
             return JsonResponse({"id": preference["id"]})
 
         except Exception as e:
