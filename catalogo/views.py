@@ -740,7 +740,8 @@ def crear_preferencia(request):
                 }
             }
 
-            print("Back URLs:", request.build_absolute_uri(reverse("pago_exito")))
+            print("SCHEME:", request.scheme)
+            print("SUCCESS URLs:", request.build_absolute_uri(reverse("pago_exito")))
 
             preference_response = sdk.preference().create(preference_data)
             print("RESPUESTA MP:", preference_response)  # Para debug en consola
