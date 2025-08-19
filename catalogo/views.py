@@ -733,15 +733,17 @@ def crear_preferencia(request):
                     "failure": request.build_absolute_uri(reverse("pago_error")),
                     "pending": request.build_absolute_uri(reverse("pago_pendiente"))
                 },
-                #"auto_return": "approved",
+                "auto_return": "approved",
                 "payment_methods": {
                     "installments": 1 #,  # Solo 1 cuota
                     #"excluded_payment_types": [{"id": "ticket"}]  # Excluir pagos en efectivo
                 }
             }
 
+            print("Back URLs:", request.build_absolute_uri(reverse("pago_exito")))
+
             preference_response = sdk.preference().create(preference_data)
-            #print("RESPUESTA MP:", preference_response)  # Para debug en consola
+            print("RESPUESTA MP:", preference_response)  # Para debug en consola
 
             if "response" not in preference_response or "id" not in preference_response["response"]:
                 return JsonResponse({"error": "No se pudo crear la preferencia"}, status=500)
