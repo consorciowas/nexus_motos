@@ -29,4 +29,5 @@ urlpatterns = [
     path("carrito/pago/exito/", views.pago_exito, name="pago_exito"),
     path("carrito/pago/error/", views.pago_error, name="pago_error"),
     path("carrito/pago/pendiente/", views.pago_pendiente, name="pago_pendiente"),
+    path("test-smtp/", views.test_smtp),
 ]

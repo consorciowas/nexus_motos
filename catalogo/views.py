@@ -27,6 +27,7 @@ import json
 import traceback
 import mercadopago
 import io
+import smtplib
 
 User = get_user_model()
 
@@ -1168,6 +1169,8 @@ def pago_exito(request):
 
         if "factura_tmp" in request.session:
             del request.session["factura_tmp"]
+
+        request.session['carrito_total'] = 0
         
         request.session.modified = True
 
@@ -1183,3 +1186,13 @@ def pago_error(request):
 
 def pago_pendiente(request):
     return render(request, "catalogo/pago_pendiente.html")
+
+
+def test_smtp(request):
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587, timeout=10)
+        server.starttls()
+        server.login("nexusmotossac@gmail.com", "tu_app_password")
+        return HttpResponse("✅ Conexión exitosa con Gmail SMTP")
+    except Exception as e:
+        return HttpResponse(f"❌ Error: {e}")
