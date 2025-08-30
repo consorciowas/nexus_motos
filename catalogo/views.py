@@ -951,6 +951,8 @@ def registrar_venta(request):
         raise ValueError("No se encontró metodo de pago registrado")
     
     usuario_id = TblUsuario.objects.filter(username='venta-online').values_list('id', flat=True).first()
+    print("usuario_idddd")
+    print(usuario_id)
     if usuario_id is None:
         raise ValueError("No se encontró vendedor registrado")
 
@@ -968,6 +970,9 @@ def registrar_venta(request):
         cliente_id=cliente_id,
         usuario_id=usuario_id
     )
+
+    print("ventaaaaa")
+    print(venta)
 
     # si es factura, guardar datos en la venta
     if factura_tmp:
@@ -992,6 +997,9 @@ def registrar_venta(request):
         usuario_id=usuario_id
     )
 
+    print("salidaaaaa")
+    print(salida)
+
     # ---- Crear venta detalle y descontar stock ----
     for item in carrito.values():
         prod_id = item["prod_id"]
@@ -1006,7 +1014,7 @@ def registrar_venta(request):
         subtotal_item = float(item["precio"]) * cantidad
 
         # Crear detalle-venta
-        TblDetVenta.objects.create(
+        detventa =TblDetVenta.objects.create(
             venta=venta,
             prod_id=prod_id,
             det_venta_cantidad=cantidad,
@@ -1016,16 +1024,22 @@ def registrar_venta(request):
             det_venta_total=subtotal_item
         )
 
+        print("detventaaaaaa")
+        print(detventa)
+
         precio_salida = float(subtotal_item / cantidad if cantidad else 0)
 
 
-        TblDetSalida.objects.create(
+        detSalida = TblDetSalida.objects.create(
             salida=salida,
             prod_id=prod_id,
             det_salida_cantidad=cantidad,
             det_salida_sub_total=subtotal_item,
             det_salida_precio_salida=precio_salida
         )
+
+        print("detSalidaaaaa")
+        print(detSalida)
 
         # Llamar al procedimiento almacenado
         with connection.cursor() as cursor:
