@@ -10,6 +10,12 @@
     <div class="container text-center mt-5">
         <h1 class="text-success">✅ Pago exitoso</h1>
         <p>¡Gracias por tu compra! Hemos recibido tu pago correctamente.</p>
+
+        {% if venta %}
+            <p><strong>Número de documento:</strong> {{ venta.venta_nro_documento }}</p>
+            <p><strong>Total:</strong> S/. {{ venta.venta_total|floatformat:2 }}</p>
+        {% endif %}
+
         <a href="{% url 'inicio' %}" class="btn btn-primary mt-3">Volver al inicio</a>
     </div>
 </div>

@@ -97,6 +97,15 @@
               Para continuar con tu compra, revisa en el Carro los productos con alerta y disminuye la cantidad de unidades.
             </div>
           </div>
+
+          <!-- Si está logueado, mostramos el checkbox de factura SIEMPRE -->
+          {% if user.is_authenticated %}
+          <div class="form-check mt-2" id="box-flag-factura">
+            <input class="form-check-input" type="checkbox" id="check-factura">
+            <label class="form-check-label" for="check-factura">¿Necesita Factura?</label>
+          </div>
+          {% endif %}
+
         </div>
       </div>
       {% else %}
@@ -107,6 +116,133 @@
     </div>
   </div>
 </div>
+
+<!-- Modal Factura (para LOGUEADOS y también lo reutilizamos si hace falta) -->
+<div class="modal fade" id="modalFactura" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Datos para Factura</h5></div>
+      <div class="modal-body">
+        <form id="form-factura">
+          <div class="mb-2">
+            <label class="form-label">RUC</label>
+            <input type="text" name="ruc" class="form-control" maxlength="11" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Razón social</label>
+            <input type="text" name="razon_social" class="form-control" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Teléfono</label>
+            <input type="text" name="telefono" class="form-control" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Correo</label>
+            <input type="email" name="correo" class="form-control" required>
+          </div>
+          <div class="mb-2">
+            <label class="form-label">Dirección</label>
+            <input type="text" name="direccion" class="form-control" required>
+          </div>
+        </form>
+        <small class="text-muted d-block">Estos datos se usarán para la emisión de tu factura.</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="cancel-factura" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" id="save-factura" class="btn btn-primary">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Cliente (NO LOGUEADOS) -->
+{% if not user.is_authenticated %}
+<div class="modal fade" id="modalCliente" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header"><h5 class="modal-title">Completa tus datos</h5></div>
+      <div class="modal-body">
+        <form id="form-cliente" novalidate>
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">Tipo de documento</label>
+              <select name="tipo_documento" id="tipo_doc" class="form-select" required>
+                <option value="DNI">DNI</option>
+                <option value="CE">Carnet de extranjería</option>
+              </select>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">N° documento</label>
+              <input type="text" name="documento" id="num_doc" class="form-control" required>
+              <div class="form-text">8 dígitos para DNI, 12 para CE.</div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Correo</label>
+              <input type="email" name="correo" class="form-control" required>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Nombre</label>
+              <input type="text" name="nombre" class="form-control" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Apellido paterno</label>
+              <input type="text" name="paterno" class="form-control" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Apellido materno</label>
+              <input type="text" name="materno" class="form-control" required>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Teléfono</label>
+              <input type="text" name="telefono" class="form-control" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Dirección</label>
+              <input type="text" name="direccion" class="form-control" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Fecha de nacimiento</label>
+              <input type="date" name="nacimiento" class="form-control" required>
+            </div>
+
+            <div class="col-md-4">
+              <label class="form-label">Sexo</label>
+              <select name="sexo" class="form-select" required>
+                <option value="">—</option>
+                <option value="MASCULINO">Masculino</option>
+                <option value="FEMENINO">Femenino</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-check mt-3">
+            <input class="form-check-input" type="checkbox" id="check-factura-nl">
+            <label class="form-check-label" for="check-factura-nl">¿Necesita Factura?</label>
+          </div>
+
+          <div id="factura-nl-fields" class="mt-3" style="display:none;">
+            <h6>Datos de factura</h6>
+            <div class="row g-2">
+              <div class="col-md-6"><input name="ruc" class="form-control" placeholder="RUC"></div>
+              <div class="col-md-6"><input name="razon_social" class="form-control" placeholder="Razón social"></div>
+              <div class="col-md-6"><input name="telefono_factura" class="form-control" placeholder="Teléfono"></div>
+              <div class="col-md-6"><input type="email" name="correo_factura" class="form-control" placeholder="Correo"></div>
+              <div class="col-12"><input name="direccion_factura" class="form-control" placeholder="Dirección"></div>
+            </div>
+          </div>
+        </form>
+        <small class="text-muted d-block mt-2">Si encontramos tu documento, completaremos tus datos automáticamente.</small>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="cancel-cliente" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" id="save-cliente" class="btn btn-primary" disabled>Confirmar y Continuar</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
 
 <!-- Overlay con Spinner -->
 <div id="overlay-spinner" style="display: none;">
@@ -120,8 +256,11 @@
 {% block extra_js %}
 <script>
   const CSRF_TOKEN = '{{ csrf_token }}';
+  window.IS_AUTH = {{ user.is_authenticated|yesno:"true,false" }};
   window.MP_PUBLIC_KEY = "{{ MP_PUBLIC_KEY }}";
+  window.FACTURA_GUARDADA = false;
 </script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="{% static 'catalogo/js/carrito.js' %}"></script>
 <!-- SDK de Mercado Pago -->
 <script src="https://sdk.mercadopago.com/js/v2"></script>

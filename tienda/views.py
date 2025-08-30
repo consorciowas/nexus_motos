@@ -164,6 +164,12 @@ def login_view(request):
                         login(request, user)
                         request.session['id'] = user.id     # Se puede usar user.usuario_id si se prefiere
                         
+                        try:
+                            cliente = TblCliente.objects.get(usuario=user)
+                            request.session['cliente_id'] = cliente.id
+                        except TblCliente.DoesNotExist:
+                            request.session['cliente_id'] = None
+
                         if user.usuario_cambiopwd:
                             return redirect('cambiar_contrasena')  # Vista temporal para cambio de contraseña
 

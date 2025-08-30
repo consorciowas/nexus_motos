@@ -37,3 +37,6 @@
 .loading-content {
     text-align: center;
 }
+
+.input-readonly { background: #f8f9fa; pointer-events: none; }
+.is-invalid { border-color: #dc3545 !important; }
