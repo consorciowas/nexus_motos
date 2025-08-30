@@ -1068,6 +1068,7 @@ def registrar_venta(request):
             producto_talla.save()
 
     # generar PDF / Enviar correo
+    print("inicio creacion PDFFF")
     det_venta = TblDetVenta.objects.filter(venta=venta).select_related('prod')
     total_letras = numero_a_letras(venta.venta_total)
     email_fact_tmp = factura_tmp['correo'] if factura_tmp else None
@@ -1082,12 +1083,15 @@ def registrar_venta(request):
     template = render_to_string('tienda/venta_pdf.html', context)
     pdf_file = BytesIO()
     pdf = pisa.CreatePDF(template, dest=pdf_file)
+    print("fin creacion PDFFF")
+    print(pdf)
     
     emails = [cliente.cliente_email]
     if email_fact_tmp is not None and email_fact_tmp not in emails:
         emails.append(email_fact_tmp)
 
     if not pdf.err:
+        print("inicio envio emailll")
         email_message = EmailMessage(
             f"Confirmación de compra #{venta.venta_nro_documento}",
             'Gracias por su compra, adjuntamos su comprobante.',
@@ -1096,6 +1100,7 @@ def registrar_venta(request):
         )
         email_message.attach('comprobante_compra.pdf', pdf_file.getvalue(), 'application/pdf')
         email_message.send()
+        print("fin envio emailll")
     else:
         raise ValueError("Error al generar el PDF")
 
