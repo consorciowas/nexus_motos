@@ -950,7 +950,7 @@ def registrar_venta(request):
     if metodo_pago_id is None:
         raise ValueError("No se encontró metodo de pago registrado")
     
-    usuario_id = TblUsuario.objects.filter(username='venta-online').values_list('usuario_id', flat=True).first()
+    usuario_id = TblUsuario.objects.filter(username='venta-online').values_list('id', flat=True).first()
     if usuario_id is None:
         raise ValueError("No se encontró vendedor registrado")
 
