@@ -187,9 +187,9 @@ if not DEBUG: # Solo en Producción
 # Configuración de Email con Brevo
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 EMAIL_HOST = "smtp-relay.brevo.com"
-EMAIL_PORT = 587  # o 465 si prefieres SSL
-EMAIL_USE_TLS = True  # si usas puerto 587
-EMAIL_USE_SSL = False  # True si usas 465
+EMAIL_PORT = 465  # 587 si prefieres TLS o 465 si prefieres SSL
+EMAIL_USE_TLS = False  # True si usas puerto 587
+EMAIL_USE_SSL = True  # True si usas 465
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")  # credenciales en Brevo
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "admin@nexusmotos.shop")
