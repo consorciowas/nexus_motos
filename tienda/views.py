@@ -219,7 +219,7 @@ def recuperar_cuenta(request):
             send_mail(
                 subject='Recuperación de cuenta - Nexus Motos',
                 message=f'Su usuario es: {user.username}\nNueva contraseña: {nueva_pwd}',
-                from_email=settings.EMAIL_HOST_USER,
+                from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[correo],
                 fail_silently=False
             )
@@ -872,7 +872,7 @@ def agregar_cliente(request):
                 send_mail(
                     subject='Bienvenido a Nexus Motos',
                     message=f'Hola {nombre}, ya eres parte de nuestros clientes. Tu usuario es: {documento} y tu contraseña: {contrasena}',
-                    from_email=settings.EMAIL_HOST_USER,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[correo],
                     fail_silently=False
                 )

@@ -183,13 +183,16 @@ if not DEBUG: # Solo en Producción
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
 
-#CONFIGURACION CORREO CON GMAIL
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_HOST_USER = 'nexusmotossac@gmail.com'
-EMAIL_HOST_PASSWORD = 'xqcv pjvj sour vlxh'
-EMAIL_USE_TLS = True
+
+# Configuración de Email con Brevo
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp-relay.brevo.com"
+EMAIL_PORT = 587  # o 465 si prefieres SSL
+EMAIL_USE_TLS = True  # si usas puerto 587
+EMAIL_USE_SSL = False  # True si usas 465
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")  # credenciales en Brevo
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "admin@nexusmotos.shop")
 
 # Mercado Pago
 MP_PUBLIC_KEY = "APP_USR-9a4c80ff-4de2-4917-aec8-9fae8f84aed8"

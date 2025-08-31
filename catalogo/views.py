@@ -120,7 +120,7 @@ def registro_cliente(request):
             send_mail(
                 subject='Bienvenido a Nexus Motos',
                 message=f'Hola {nombre}, ya eres parte de nuestros clientes. Tu usuario es: {documento} y tu contraseña: {contrasena}',
-                from_email=settings.EMAIL_HOST_USER,  # configurado en settings
+                from_email=settings.DEFAULT_FROM_EMAIL,  # configurado en settings
                 recipient_list=[correo],
                 fail_silently=False
             )
@@ -297,7 +297,7 @@ def enviar_cotizacion(request):
                 email_message = EmailMessage(
                     'Cotización Nexus Motos',
                     'Adjunto encontrará su cotización en PDF.',
-                    settings.EMAIL_HOST_USER,
+                    settings.DEFAULT_FROM_EMAIL,
                     [email]
                 )
                 email_message.attach('cotizacion.pdf', result.getvalue(), 'application/pdf')
@@ -1096,7 +1096,7 @@ def registrar_venta(request):
         email_message = EmailMessage(
             f"Confirmación de compra #{venta.venta_nro_documento}",
             'Gracias por su compra, adjuntamos su comprobante.',
-            settings.EMAIL_HOST_USER,
+            settings.DEFAULT_FROM_EMAIL,
             emails
         )
         email_message.attach('comprobante_compra.pdf', pdf_file.getvalue(), 'application/pdf')
