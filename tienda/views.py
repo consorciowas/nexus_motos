@@ -23,7 +23,6 @@ from django.utils.http import urlencode
 from xhtml2pdf import pisa
 from num2words import num2words
 from django.contrib.auth.hashers import make_password
-from django.core.mail import send_mail
 from utils.email import send_mail_api
 import random
 import string
@@ -868,12 +867,10 @@ def agregar_cliente(request):
                 )
 
                 # Enviar correo
-                send_mail(
+                send_mail_api(
                     subject='Bienvenido a Nexus Motos',
                     message=f'Hola {nombre}, ya eres parte de nuestros clientes. Tu usuario es: {documento} y tu contraseña: {contrasena}',
-                    from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[correo],
-                    fail_silently=False
                 )
 
                 if request.headers.get('x-requested-with') == 'XMLHttpRequest':

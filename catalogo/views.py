@@ -11,7 +11,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils import timezone
 from django.conf import settings
-from django.core.mail import send_mail, EmailMessage
+from utils.email import send_mail_api
 from django.core.validators import validate_email
 from django.core.exceptions import ValidationError
 from django.urls import reverse
@@ -28,6 +28,7 @@ import traceback
 import mercadopago
 import io
 import smtplib
+import base64
 
 User = get_user_model()
 
@@ -117,12 +118,10 @@ def registro_cliente(request):
             )
 
             # Enviar correo
-            send_mail(
+            send_mail_api(
                 subject='Bienvenido a Nexus Motos',
                 message=f'Hola {nombre}, ya eres parte de nuestros clientes. Tu usuario es: {documento} y tu contraseña: {contrasena}',
-                from_email=settings.DEFAULT_FROM_EMAIL,  # configurado en settings
                 recipient_list=[correo],
-                fail_silently=False
             )
 
             return JsonResponse({'mensaje': f'Se le envió su usuario y contraseña al correo {correo}'})
@@ -294,14 +293,24 @@ def enviar_cotizacion(request):
             pdf = pisa.CreatePDF(html, dest=result, link_callback=fetch_resources)
 
             if not pdf.err:
-                email_message = EmailMessage(
-                    'Cotización Nexus Motos',
-                    'Adjunto encontrará su cotización en PDF.',
-                    settings.DEFAULT_FROM_EMAIL,
-                    [email]
+                # Preparar archivo adjunto
+                pdf_bytes = result.getvalue()
+                attachments = [
+                    {
+                        "name": "cotizacion.pdf",
+                        "content": base64.b64encode(pdf_bytes).decode("utf-8"),
+                        "contentType": "application/pdf"
+                    }
+                ]
+
+                # Enviar correo con Brevo API
+                send_mail_api(
+                    subject="Cotización Nexus Motos",
+                    message="Adjunto encontrará su cotización en PDF.",
+                    recipient_list=[email],
+                    attachments=attachments
                 )
-                email_message.attach('cotizacion.pdf', result.getvalue(), 'application/pdf')
-                email_message.send()
+
                 return JsonResponse({'success': True})
             else:
                 return JsonResponse({'error': 'Error al generar el PDF.'})
@@ -952,8 +961,7 @@ def registrar_venta(request):
         raise ValueError("No se encontró metodo de pago registrado")
     
     usuario_id = TblUsuario.objects.filter(username='venta-online').values_list('id', flat=True).first()
-    print("usuario_idddd")
-    print(usuario_id)
+    
     if usuario_id is None:
         raise ValueError("No se encontró vendedor registrado")
 
@@ -971,9 +979,6 @@ def registrar_venta(request):
         cliente_id=cliente_id,
         usuario_id=usuario_id
     )
-
-    print("ventaaaaa")
-    print(venta)
 
     # si es factura, guardar datos en la venta
     if factura_tmp:
@@ -997,9 +1002,6 @@ def registrar_venta(request):
         venta=venta,
         usuario_id=usuario_id
     )
-
-    print("salidaaaaa")
-    print(salida)
 
     # ---- Crear venta detalle y descontar stock ----
     for item in carrito.values():
@@ -1025,9 +1027,6 @@ def registrar_venta(request):
             det_venta_total=subtotal_item
         )
 
-        print("detventaaaaaa")
-        print(detventa)
-
         precio_salida = float(subtotal_item / cantidad if cantidad else 0)
 
 
@@ -1038,9 +1037,6 @@ def registrar_venta(request):
             det_salida_sub_total=subtotal_item,
             det_salida_precio_salida=precio_salida
         )
-
-        print("detSalidaaaaa")
-        print(detSalida)
 
         # Llamar al procedimiento almacenado
         with connection.cursor() as cursor:
@@ -1069,7 +1065,6 @@ def registrar_venta(request):
             producto_talla.save()
 
     # generar PDF / Enviar correo
-    print("inicio creacion PDFFF")
     det_venta = TblDetVenta.objects.filter(venta=venta).select_related('prod')
     total_letras = numero_a_letras(venta.venta_total)
     email_fact_tmp = factura_tmp['correo'] if factura_tmp else None
@@ -1084,24 +1079,25 @@ def registrar_venta(request):
     template = render_to_string('tienda/venta_pdf.html', context)
     pdf_file = BytesIO()
     pdf = pisa.CreatePDF(template, dest=pdf_file)
-    print("fin creacion PDFFF")
-    print(pdf)
     
     emails = [cliente.cliente_email]
     if email_fact_tmp is not None and email_fact_tmp not in emails:
         emails.append(email_fact_tmp)
 
     if not pdf.err:
-        print("inicio envio emailll")
-        email_message = EmailMessage(
-            f"Confirmación de compra #{venta.venta_nro_documento}",
-            'Gracias por su compra, adjuntamos su comprobante.',
-            settings.DEFAULT_FROM_EMAIL,
-            emails
+        pdf_bytes = pdf_file.getvalue()
+        send_mail_api(
+            subject=f"Confirmación de compra #{venta.venta_nro_documento}",
+            message="Gracias por su compra, adjuntamos su comprobante.",
+            recipient_list=emails,
+            attachments=[
+                {
+                    "name": "comprobante_compra.pdf",
+                    "content": base64.b64encode(pdf_bytes).decode("utf-8"),
+                    "contentType": "application/pdf",
+                }
+            ]
         )
-        email_message.attach('comprobante_compra.pdf', pdf_file.getvalue(), 'application/pdf')
-        email_message.send()
-        print("fin envio emailll")
     else:
         raise ValueError("Error al generar el PDF")
 
