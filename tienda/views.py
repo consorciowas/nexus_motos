@@ -24,6 +24,7 @@ from xhtml2pdf import pisa
 from num2words import num2words
 from django.contrib.auth.hashers import make_password
 from django.core.mail import send_mail
+from utils.email import send_mail_api
 import random
 import string
 import json
@@ -216,12 +217,10 @@ def recuperar_cuenta(request):
 
         # Enviar correo
         try:
-            send_mail(
+            send_mail_api(
                 subject='Recuperación de cuenta - Nexus Motos',
                 message=f'Su usuario es: {user.username}\nNueva contraseña: {nueva_pwd}',
-                from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[correo],
-                fail_silently=False
             )
             return JsonResponse({'ok': True, 'mensaje': f'Se envió un correo a {correo} con sus credenciales.'})
         except Exception as e:

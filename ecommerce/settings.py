@@ -184,15 +184,12 @@ if not DEBUG: # Solo en Producción
     CSRF_COOKIE_SECURE = True
 
 
-# Configuración de Email con Brevo
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = "smtp-relay.brevo.com"
-EMAIL_PORT = 465  # 587 si prefieres TLS o 465 si prefieres SSL
-EMAIL_USE_TLS = False  # True si usas puerto 587
-EMAIL_USE_SSL = True  # True si usas 465
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")  # credenciales en Brevo
-EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+# Brevo API
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
+# Remitente por defecto (tu dominio verificado en Brevo)
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "admin@nexusmotos.shop")
+SENDER_NAME = os.getenv("SENDER_NAME", "Nexus Motos")
+
 
 # Mercado Pago
 MP_PUBLIC_KEY = "APP_USR-9a4c80ff-4de2-4917-aec8-9fae8f84aed8"
