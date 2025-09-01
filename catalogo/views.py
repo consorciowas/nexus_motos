@@ -906,6 +906,7 @@ def registrar_venta(request):
     carrito = request.session.get('carrito', [])
     cliente_id = request.session.get('cliente_id')
     factura_tmp = request.session.get('factura_tmp')
+    cliente_new_pwd = request.session.get('cliente_nuevo_pwd')
 
     if not carrito:
         raise ValueError("El carrito está vacío, no se puede registrar la venta")
@@ -1088,7 +1089,11 @@ def registrar_venta(request):
         pdf_bytes = pdf_file.getvalue()
         send_mail_api(
             subject=f"Confirmación de compra #{venta.venta_nro_documento}",
-            message="Gracias por su compra, adjuntamos su comprobante.",
+            message=(
+                f"Gracias por su compra,\n"
+                f"{'Tu usuario es: ' + cliente.cliente_nrodocumento + ' y tu contraseña: ' + cliente_new_pwd + '\n' if cliente_new_pwd else ''}"
+                f"adjuntamos su comprobante."
+            ),
             recipient_list=emails,
             attachments=[
                 {
