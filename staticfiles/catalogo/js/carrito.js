@@ -112,7 +112,13 @@ function cambiarCantidad(row, delta) {
   .then(r => r.json())
   .then(data => {
     if (!data.success) {
-      alert(data.mensaje || 'No se pudo actualizar la cantidad.');
+      Swal.fire({
+          title: 'Error',
+          text: data.mensaje || 'No se pudo actualizar la cantidad.',
+          icon: 'error',
+          allowOutsideClick: false,
+          allowEscapeKey: false
+      });
       return;
     }
 
@@ -149,7 +155,13 @@ function eliminarProducto(row) {
   .then(r => r.json())
   .then(data => {
     if (!data.success) {
-      alert(data.mensaje || 'No se pudo eliminar el producto.');
+      Swal.fire({
+          title: 'Error',
+          text: data.mensaje || 'No se pudo eliminar el producto.',
+          icon: 'error',
+          allowOutsideClick: false,
+          allowEscapeKey: false
+      });
       return;
     }
 
@@ -260,7 +272,13 @@ if (checkFactura) {
     const data = Object.fromEntries(new FormData(formFactura).entries());
     // validar
     if (!validateFacturaFields(data)) {
-      alert('Por favor completa correctamente RUC (11 dígitos), correo y todos los campos.');
+      Swal.fire({
+          title: 'Datos incompletos',
+          text: 'Por favor completa correctamente RUC (11 dígitos), correo y todos los campos.',
+          icon: 'warning',
+          allowOutsideClick: false,
+          allowEscapeKey: false
+      });
       return;
     }
     mostrarSpinner();
@@ -312,6 +330,17 @@ if (checkFacturaNL && facturaNLSec) {
     }
     evaluateClienteForm();
   });
+
+  // Validar que solo escriba números
+  const ruc = facturaNLSec.querySelector(`[name="ruc"]`);
+  const tel = facturaNLSec.querySelector(`[name="telefono_factura"]`);
+  ruc.addEventListener('input', () => {
+    ruc.value = ruc.value.replace(/\D/g, ''); // solo números
+  });
+  tel.addEventListener('input', () => {
+    tel.value = tel.value.replace(/\D/g, ''); // solo números
+  });
+
 }
 
   function validateDoc(tipo, nro) {
@@ -322,23 +351,14 @@ if (checkFacturaNL && facturaNLSec) {
   }
 
   function evaluateClienteForm() {
-    console.log("entraaaaa")
     if (!formCliente) return;
     const fd = Object.fromEntries(new FormData(formCliente).entries());
-    console.log(fd)
     // Documento
     let ok = validateDoc(fd.tipo_documento, fd.documento);
-    console.log("okkkk")
-    console.log(ok)
     // Datos base
     ok = ok && fd.nombre && fd.paterno && fd.materno && emailRegex.test(fd.correo || '');
-    console.log(ok)
-    console.log(ok && fd.telefono)
-    console.log(ok && fd.telefono && fd.direccion)
-    console.log(ok && fd.telefono && fd.direccion && fd.nacimiento)
-    console.log(ok && fd.telefono && fd.direccion && fd.nacimiento && fd.sexo)
     ok = ok && fd.telefono && fd.direccion && fd.nacimiento && fd.sexo;
-    console.log(ok && fd.telefono)
+    
     // Si factura NL activo, validar
     if (checkFacturaNL && checkFacturaNL.checked) {
       const f = {
@@ -357,13 +377,35 @@ if (checkFacturaNL && facturaNLSec) {
     formCliente.addEventListener('input', evaluateClienteForm);
   }
 
-  // Buscar cliente por documento al salir del campo
+
   if (numDocEl) {
-    // Permitir solo números al escribir
+    // función que ajusta maxlength
+    function actualizarMaxLength() {
+      if (tipoDocEl.value === "DNI") {
+        numDocEl.maxLength = 8;
+      } else if (tipoDocEl.value === "CE") {
+        numDocEl.maxLength = 12;
+      }
+      // cortar si el usuario pegó más de lo permitido
+      numDocEl.value = numDocEl.value.slice(0, numDocEl.maxLength);
+    }
+
+    // Al cargar la página, establecer maxlength inicial
+    actualizarMaxLength();
+
+    // Cuando cambie el tipo de documento
+    tipoDocEl.addEventListener('change', actualizarMaxLength);
+
+    // Validar que solo escriba números
     numDocEl.addEventListener('input', () => {
-      numDocEl.value = numDocEl.value.replace(/\D/g, ''); // elimina cualquier letra o símbolo
+      numDocEl.value = numDocEl.value.replace(/\D/g, ''); // solo números
+    });
+    const telEl = formCliente.querySelector(`[name="telefono"]`);
+    telEl.addEventListener('input', () => {
+      telEl.value = telEl.value.replace(/\D/g, ''); // solo números
     });
 
+    // Buscar cliente por documento al salir del campo
     numDocEl.addEventListener('blur', async () => {
       const tipo = tipoDocEl.value;
       const doc = numDocEl.value.trim();
@@ -378,7 +420,15 @@ if (checkFacturaNL && facturaNLSec) {
       }
 
       if (!validateDoc(tipo, doc)) return; // si está vacío o inválido, salir
+
       mostrarSpinner();
+      //inicializamos valores
+      ['nombre','paterno','materno','correo','telefono','direccion','nacimiento','sexo'].forEach(name => {
+        const el = formCliente.querySelector(`[name="${name}"]`);
+        if (el) { el.value = ''; }
+      });
+      setReadonly(formCliente, false);
+
       try {
         const url = `/catalogo/carrito/cliente/buscar/?tipo=${encodeURIComponent(tipo)}&doc=${encodeURIComponent(doc)}`;
         const res = await fetch(url, { headers: { 'X-CSRFToken': CSRF_TOKEN }});
@@ -475,7 +525,13 @@ if (checkFacturaNL && facturaNLSec) {
         await iniciarCheckoutMP();
       } catch (e) {
         console.error(e);
-        alert(e.message || 'Ocurrió un error');
+        Swal.fire({
+            title: 'Error',
+            text: e.message || 'Ocurrió un error',
+            icon: 'error',
+            allowOutsideClick: false,
+            allowEscapeKey: false
+        });
       } finally {
         ocultarSpinner();
       }
@@ -499,7 +555,13 @@ async function iniciarCheckoutMP() {
     });
   } catch (e) {
     console.error('Error creando preferencia:', e);
-    alert('No se pudo iniciar el pago.');
+    Swal.fire({
+        title: 'Error',
+        text: 'No se pudo iniciar el pago.',
+        icon: 'error',
+        allowOutsideClick: false,
+        allowEscapeKey: false
+    });
   } finally {
     ocultarSpinner();
   }
