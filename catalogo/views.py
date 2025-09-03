@@ -976,6 +976,7 @@ def registrar_venta(request):
         venta_igv=igv,
         venta_costo_igv=venta_igv,
         venta_total=venta_total,
+        venta_online = True,
         metodo_pago_id=metodo_pago_id,
         cliente_id=cliente_id,
         usuario_id=usuario_id
@@ -999,6 +1000,7 @@ def registrar_venta(request):
         salida_costo_igv=venta_igv,
         salida_costo_total=venta_total,
         salida_motivo='VENTA',
+        salida_online = True,
         tipo_doc_almacen_id=tipo_doc_obj.tipo_doc_almacen_id,
         venta=venta,
         usuario_id=usuario_id
