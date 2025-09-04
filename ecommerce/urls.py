@@ -57,6 +57,7 @@ urlpatterns = [
     path('editar_cliente/<int:clien_id>/', views.editar_cliente, name='editar_cliente'),
     # VENTAS-------------------
     path('lista_ventas/',views.lista_ventas, name= 'lista_ventas'),
+    path('lista_ventas/confirmar_entrega/<int:venta_id>/', views.confirmar_entrega_articulo, name='confirmar_entrega_articulo'),
     path('agregar_venta/',views.agregar_venta, name= 'agregar_venta'),
     path('venta/pdf/<int:venta_id>/', views.generar_pdf_venta, name='generar_pdf_venta'),
     path('venta/<int:venta_id>/', views.detalle_venta, name='detalle_venta'),

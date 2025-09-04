@@ -21,20 +21,24 @@
       <h2 class="text-xl font-semibold mb-4">Resumen rápido</h2>
       <div class="flex flex-wrap gap-6 justify-center">
         <div class="kpi-circle">
-          <span class="text-6xl">👥</span>
-          <span class="kpi-badge text-indigo-300"><span id="kpiClientes">{{ kpi_clientes }}</span> CLIENTES</span>
+          <!-- <span class="text-6xl">👥</span> -->
+          <img src="{% static 'assets/img/icons_dash/icon-cliente.png' %}" class="w-16 h-16">
+          <span class="kpi-badge text-amber-300"><span id="kpiClientes">{{ kpi_clientes }}</span> CLIENTES</span>
         </div>
         <div class="kpi-circle">
-          <span class="text-6xl">🏬</span>
-          <span class="kpi-badge text-emerald-300"><span id="kpiProveedores">{{ kpi_proveedores }}</span> PROVEEDORES</span>
+          <!-- <span class="text-6xl">🏬</span> -->
+          <img src="{% static 'assets/img/icons_dash/icon-almacen.png' %}" class="w-16 h-16">
+          <span class="kpi-badge text-red-300"><span id="kpiProveedores">{{ kpi_proveedores }}</span> PROVEEDORES</span>
         </div>
         <div class="kpi-circle">
-          <span class="text-6xl">🏍️</span>
-          <span class="kpi-badge text-amber-300"><span id="kpiMotos">{{ kpi_motos }}</span> MOTOS</span>
+          <!-- <span class="text-6xl">🏍️</span> -->
+          <img src="{% static 'assets/img/icons_dash/icon-moto.png' %}" class="w-16 h-16">
+          <span class="kpi-badge text-indigo-300"><span id="kpiMotos">{{ kpi_motos }}</span> MOTOS</span>
         </div>
         <div class="kpi-circle">
-          <span class="text-6xl">🪖</span>
-          <span class="kpi-badge text-red-300"><span id="kpiAccesorios">{{ kpi_accesorios }}</span> ACCESORIOS</span>
+          <!-- <span class="text-6xl">🪖</span> -->
+          <img src="{% static 'assets/img/icons_dash/icon-casco.png' %}" class="w-16 h-16">
+          <span class="kpi-badge text-emerald-300"><span id="kpiAccesorios">{{ kpi_accesorios }}</span> ACCESORIOS</span>
         </div>
       </div>
     </section>
@@ -96,7 +100,7 @@
       <div class="card p-4 col-span-12 space-y-4">
         <div class="flex flex-col lg:flex-row gap-6">
           <div class="flex-1">
-            <h2 class="text-xl font-semibold mb-2">Estado de artículos (Kardex)</h2>
+            <h2 class="text-xl font-semibold mb-2">Estado de artículos</h2>
             <div class="table-wrap">
               <table id="tablaEstado">
                 <thead>
@@ -181,7 +185,7 @@
           <canvas id="donaCanal"></canvas>
         </div>
         <div class="card p-4">
-          <h3 class="font-semibold mb-2">Entregas Online (mitad de dona)</h3>
+          <h3 class="font-semibold mb-2">Entregas Online</h3>
           <div class="text-sm text-gray-400 mb-1">Total online: <span id="totalOnline">0</span></div>
           <canvas id="halfDonaOnline"></canvas>
         </div>

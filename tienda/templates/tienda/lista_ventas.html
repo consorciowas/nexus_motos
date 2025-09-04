@@ -58,7 +58,7 @@
                                     {% for item in ventas_estado %}
                                     {% with venta=item.venta estado=item.estado %}
                                     <tr>
-                                        <td>{{ venta.venta_fecha_venta|date:"d/m/Y H:i:s" }}</td>
+                                        <td data-order="{{ venta.venta_fecha_venta|date:'Y-m-d H:i:s' }}">{{ venta.venta_fecha_venta|date:"d/m/Y H:i:s" }}</td>
                                         <td>{{ venta.venta_tipo_comprobante }}</td>
                                         <td>{{ venta.venta_nro_documento }}</td>
                                         <td>{{ venta.cliente.cliente_nombre }} {{ venta.cliente.cliente_paterno }}</td>
@@ -67,11 +67,17 @@
                                         <td>{{ venta.venta_subtotal }}</td>
                                         <td>{{ venta.venta_igv }}</td>
                                         <td>{{ venta.venta_total }}</td>
-                                        <td>
+                                        <td style="text-align: left;">
                                             <span class="badge {% if estado == 'PAGADO' %}bg-success{% else %}bg-warning text-dark{% endif %}">{{ estado }}</span>
+                                            {% if venta.venta_online and not venta.venta_online_entregado %}
+                                                <br><span class="badge bg-light text-warning border border-warning" style="margin-top: 3px;">PENDIENTE ENTREGA</span>
+                                            {% endif %}
                                         </td>
                                         <td>
                                             <a href="{% url 'detalle_venta' venta.venta_id %}" class="btn btn-sm btn-icon btn-outline-primary" title="Ver"><i class="bx bx-show"></i></a>
+                                            {% if venta.venta_online and not venta.venta_online_entregado %}
+                                                <button type="button" class="btn btn-sm btn-icon btn-outline-warning confirmarEntrega" title="Confirmar entrega" data-venta-id="{{ venta.venta_id }}"><i class="bx bx-calendar-check"></i></button>
+                                            {% endif %}
                                         </td>
                                     </tr>
                                     {% endwith %}
@@ -92,7 +98,7 @@
 <script src="{% static 'assets/vendor/libs/DataTables/DataTables-1.13.8/js/jquery.dataTables.min.js' %}"></script>
 <script src="{% static 'assets/vendor/libs/DataTables/DataTables-1.13.8/js/dataTables.bootstrap5.min.js' %}"></script>
 <script src="{% static 'assets/vendor/libs/DataTables/Buttons-2.4.2/js/dataTables.buttons.min.js' %}"></script>
-<!-- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="{% static 'tienda/js/lista_ventas.js' %}"></script>
 
 {% if request.GET.pdf %}

@@ -9,7 +9,7 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from datetime import datetime, date, timedelta
 from django.utils import timezone
-from django.db.models import Max, Sum, Q, F, Value, Count
+from django.db.models import Max, Sum, Q, F, Value, Count, Case, When, IntegerField
 from django.db.models.functions import Concat
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
@@ -1228,7 +1228,19 @@ def detalle_cliente(request, clien_id):
 #### VENTAS ####
 @solo_personal
 def lista_ventas(request):
-    ventas = TblVenta.objects.select_related('cliente', 'usuario', 'metodo_pago').prefetch_related('tblfinanciamiento_set')
+    ventas = (
+        TblVenta.objects
+        .select_related('cliente', 'usuario', 'metodo_pago')
+        .prefetch_related('tblfinanciamiento_set')
+        .annotate(
+            prioridad=Case(
+                When(venta_online=True, venta_online_entregado=False, then=Value(0)),
+                default=Value(1),
+                output_field=IntegerField(),
+            )
+        )
+        .order_by('prioridad', '-venta_fecha_venta')
+    )
 
     ventas_estado = []
     for venta in ventas:
@@ -1242,7 +1254,7 @@ def lista_ventas(request):
             elif all(f.financia_estado == 'PAGADO' for f in financiamientos):
                 estado = 'PAGADO'
             else:
-                estado = 'PENDIENTE'
+                estado = 'PEND. DE PAGO'
         
         ventas_estado.append({
             'venta': venta,
@@ -1257,6 +1269,20 @@ def lista_ventas(request):
     }
 
     return render(request, 'tienda/lista_ventas.html', context)
+
+@require_POST
+@solo_personal
+def confirmar_entrega_articulo(request, venta_id):
+    venta = get_object_or_404(TblVenta, venta_id=venta_id)
+
+    nuevo_estado = not venta.venta_online_entregado
+    venta.venta_online_entregado = nuevo_estado
+    venta.save()
+
+    # Actualizamos la salida relacionada (si existe)
+    TblSalida.objects.filter(venta=venta).update(salida_online_entregado=nuevo_estado)
+
+    return JsonResponse({"message": 'Se ha confirmado la entrega correctamente.'})
 
 @transaction.atomic
 @solo_personal
