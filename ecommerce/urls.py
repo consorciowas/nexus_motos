@@ -23,9 +23,12 @@ urlpatterns = [
     # API REST
     path('app/', include('app.urls')),
 
-    # HOMRE---------
+    # HOME---------
     path('admin/', admin.site.urls),
     path('', views.home, name='home'),
+    path("api/dashboard/overview/", views.api_dashboard_overview, name="api_dashboard_overview"),
+    path("api/dashboard/state/", views.api_dashboard_state, name="api_dashboard_state"),
+    path("api/dashboard/filter/", views.api_dashboard_filter, name="api_dashboard_filter"),
     path('login/', views.login_view, name='login'),
     path('recuperar_cuenta/', views.recuperar_cuenta, name='recuperar_cuenta'),
     # path('logout/',views.signoup, name= 'logout'),

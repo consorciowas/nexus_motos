@@ -7,10 +7,9 @@ from .forms import LoginForm, RegistroUsuarioForm, ArticuloForm, ProveedorForm, 
 from .models import TblUsuario, TblProducto, TblProveedor, TblCliente, TblVenta, TblDetVenta, TblEntrada,TblTipoDocAlmacen, TblDetEntrada, TblMetodoPago, TblSalida, TblDetSalida, TblFinanciamiento, TblDetFinanciamiento, TblTipoUsuario, TblCargo, TblKardex, TblProductoSerie
 from django.contrib import messages
 from django.core.paginator import Paginator
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from django.utils import timezone
-from datetime import date, timedelta
-from django.db.models import Max, Sum, Q, F, Value
+from django.db.models import Max, Sum, Q, F, Value, Count
 from django.db.models.functions import Concat
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
@@ -30,11 +29,14 @@ import json
 import traceback
 
 import requests
-from django.http import JsonResponse, HttpResponse, HttpResponseForbidden
+from django.http import JsonResponse, HttpResponse, HttpResponseForbidden, HttpResponseBadRequest
 from django.views.decorators.http import require_GET, require_POST
 
 from django.contrib.auth import get_user_model
 from django.utils.dateparse import parse_datetime, parse_date
+
+from calendar import monthrange
+from collections import defaultdict, OrderedDict
 
 
 User = get_user_model()
@@ -48,101 +50,368 @@ def solo_personal(view_func):
         return HttpResponseForbidden("Acceso no autorizado.")
     return _wrapped_view
 
+
+# ---------- Helpers ----------
+def month_key(dt):
+    return dt.strftime("%Y-%m")
+
+def month_label(dt):
+    meses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
+    return f"{meses[dt.month-1]} {dt.year}"
+
+def first_day(dt):
+    return dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+def last_day(dt):
+    last = monthrange(dt.year, dt.month)[1]
+    return dt.replace(day=last, hour=23, minute=59, second=59, microsecond=999999)
+
+def last_n_months(n=6, tz=None):
+    now = timezone.localtime(timezone.now(), tz) if tz else timezone.localtime()
+    months = []
+    cur = now.replace(day=1)
+    for i in range(n-1, -1, -1):
+        m = (cur - timedelta(days=1)).replace(day=1) if i != 0 else cur
+        # recalcular correcto: mover hacia atrás i meses
+    months = []
+    base = now.replace(day=15)  # para evitar bordes
+    for i in range(n-1, -1, -1):
+        m = (base - timedelta(days=30*i))
+        m = m.replace(day=1)
+        months.append(m)
+    # normalizar por año/mes únicos ordenados
+    ordered = OrderedDict()
+    for m in sorted(months, key=lambda d:(d.year, d.month)):
+        key = (m.year, m.month)
+        if key not in ordered:
+            ordered[key] = m
+    return list(ordered.values())[-n:]
+
+def parse_date(s):
+    return datetime.strptime(s, "%Y-%m-%d")
+
+
 @solo_personal
 def home(request):
-    today = timezone.now()
-    last_week = today - timedelta(days=7)
+    # KPI circulares (cuenta inicial para la primera sección)
+    clientes = TblCliente.objects.count()
+    proveedores = TblProveedor.objects.count()
+    motos = TblProducto.objects.filter(prod_tipo__iexact="MOTO").count()
+    accesorios = TblProducto.objects.filter(prod_tipo__iexact="ACCESORIO").count()
 
-    # Total compras
-    total_compras = TblEntrada.objects.aggregate(total=Sum('entrada_costo_total'))['total'] or 0
-    compras_semana = TblEntrada.objects.filter(entrada_fecha__gte=last_week).aggregate(total=Sum('entrada_costo_total'))['total'] or 0
-
-    
-    # Total ventas (no eliminadas)
-    total_ventas = TblSalida.objects.filter(salida_eliminado=False).aggregate(total=Sum('salida_costo_total'))['total'] or 0
-    ventas_semana = TblSalida.objects.filter(salida_eliminado=False, salida_fecha__gte=last_week).aggregate(total=Sum('salida_costo_total'))['total'] or 0
-
-    
-    # Clientes
-    total_clientes = TblCliente.objects.count()
-    clientes_semana = TblCliente.objects.filter(cliente_fecha__gte=last_week).count()
-
-    
-    # Proveedores
-    total_proveedores = TblProveedor.objects.count()
-    proveedores_semana = TblProveedor.objects.filter(proveedor_fecha__gte=last_week).count()
-
-    # Top 5 productos más vendidos
-    top_productos = (
-        TblDetSalida.objects
-        .filter(salida_id__salida_eliminado=False)
-        .values('prod_id__prod_nombre', 'prod_id__prod_modelo', 'prod_id__prod_imagen')
-        .annotate(total_ventas=Sum('det_salida_sub_total'))
-        .order_by('-total_ventas')[:5]
-    )
-
-    # Top 5 vendedores
-    try:
-        vendedores_ids = TblCargo.objects.filter(cargo_emp_descrip='Vendedor').values_list('cargo_id', flat=True)
-    except Exception as e:
-        print("ERROR obteniendo vendedores_ids:", e)
-
-    try:
-        top_vendedores = (
-            TblSalida.objects
-            .filter(usuario__cargo_id__in=vendedores_ids)
-            .values('usuario__usuario_nombre', 'usuario__usuario_paterno')
-            .annotate(total_vendido=Sum('salida_costo_total'))
-            .order_by('-total_vendido')[:5]
-        )
-    except Exception as e:
-        print("ERROR obteniendo top_vendedores:", e)
-
-
-    # Top 5 clientes
-    
-    #try:
-    #    top_clientes = (
-    #        TblSalida.objects
-    #        .filter(salida_eliminado=False)
-    #        .values('salida_venta__venta_cliente__cliente_nombre', 'salida_venta__venta_cliente__cliente_paterno')
-    #        .annotate(total_compras=Sum('salida_costo_total'))
-    #        .order_by('-total_compras')[:5]
-    #    )
-    #except Exception as e:
-    #    print("ERROR obteniendo top_clientes:", e)
-    
-
-    # Artículos por agotar (stock <= stock mínimo)
-    try:
-        articulos_agotar = (
-            TblKardex.objects
-            .filter(kardex_stock_actual__lte=F('kardex_stock_minimo'))
-            .select_related('prod_id')
-            .values('prod_id__prod_nombre', 'prod_id__prod_modelo', 'prod_id__prod_imagen', 'kardex_stock_actual')
-        )
-    except Exception as e:
-        print("ERROR obteniendo articulos_agotar:", e)
+    # Fechas por defecto de la 3ra sección
+    tz = timezone.get_current_timezone()
+    hoy = timezone.localtime(timezone.now(), tz).date()
+    inicio_mes = hoy.replace(day=1)
 
     context = {
-        'breadcrumbs': [],
-        'menu_padre': 'home',
-        'menu_hijo': '',
-        'total_compras': total_compras,
-        'compras_semana': compras_semana,
-        'total_ventas': total_ventas,
-        'ventas_semana': ventas_semana,
-        'total_clientes': total_clientes,
-        'clientes_semana': clientes_semana,
-        'total_proveedores': total_proveedores,
-        'proveedores_semana': proveedores_semana,
-        'top_productos': top_productos,
-        'top_vendedores': top_vendedores,
-        #'top_clientes': top_clientes,
-        'articulos_agotar': articulos_agotar,
+        "kpi_clientes": clientes,
+        "kpi_proveedores": proveedores,
+        "kpi_motos": motos,
+        "kpi_accesorios": accesorios,
+        "default_start": inicio_mes.strftime("%Y-%m-%d"),
+        "default_end": hoy.strftime("%Y-%m-%d"),
     }
-
     return render(request, 'tienda/home.html', context)
+
+
+# ---------- API: Overview (secciones 1 y 2) ----------
+def api_dashboard_overview(request):
+    tz = timezone.get_current_timezone()
+    months = last_n_months(6, tz)
+    labels = [month_label(m) for m in months]
+    month_ranges = [(first_day(m), last_day(m)) for m in months]
+
+    # Map de métodos de pago
+    mp_map = dict(TblMetodoPago.objects.values_list("metodo_pago_id", "metodo_pago_descrip"))
+    tipos_pago = ["EFECTIVO", "CREDITO", "MIXTO"]
+
+    # Resumen ventas últimos 6 meses por tipo y totales
+    resumen_grid = []
+    barras_totales = []
+    stacked_totales_por_tipo = {t: [] for t in tipos_pago}
+
+
+    for (start, end), lab in zip(month_ranges, labels):
+        ventas_qs = TblVenta.objects.filter(
+            venta_fecha_venta__range=(start, end),
+            venta_eliminado=False
+        )
+
+        # Totales por tipo de pago
+        fila = {"mes": lab}
+        total_mes = ventas_qs.aggregate(total=Sum("venta_total"))["total"] or 0
+
+        # Conteos y sumas por tipo
+        pagos = defaultdict(lambda: {"n": 0, "total": 0})
+        for v in ventas_qs.select_related("metodo_pago"):
+            tipo = (v.metodo_pago.metodo_pago_descrip or "").strip().upper()
+            if tipo not in tipos_pago:
+                # normaliza nombres variantes
+                if "EFEC" in tipo: tipo = "EFECTIVO"
+                elif "CRED" in tipo: tipo = "CREDITO"
+                elif "MIX" in tipo: tipo = "MIXTO"
+                else: tipo = "EFECTIVO"
+            pagos[tipo]["n"] += 1
+            pagos[tipo]["total"] += float(v.venta_total)
+
+        for t in tipos_pago:
+            fila[f"{t.lower()}_n"] = pagos[t]["n"]
+            fila[f"{t.lower()}_total"] = round(pagos[t]["total"], 2)
+            stacked_totales_por_tipo[t].append(round(pagos[t]["total"], 2))
+
+        fila["total_mes"] = round(float(total_mes), 2)
+        resumen_grid.append(fila)
+        barras_totales.append(round(float(total_mes), 2))
+
+    # Utilidad por mes (formula por venta y se suma)
+    utilidades = []
+    ventas_canal_tienda = []
+    ventas_canal_online = []
+    for (start, end) in month_ranges:
+        ventas_mes = TblVenta.objects.filter(
+            venta_fecha_venta__range=(start, end),
+            venta_eliminado=False
+        )
+        util = 0.0
+        tienda_n = 0
+        online_n = 0
+        for v in ventas_mes:
+            vt = float(v.venta_total)
+            u = (vt - (vt / 1.2)) / 1.8
+            util += u
+            if v.venta_online:
+                online_n += 1
+            else:
+                tienda_n += 1
+        utilidades.append(round(util, 2))
+        ventas_canal_tienda.append(tienda_n)
+        ventas_canal_online.append(online_n)
+
+    # Más vendido por tipo (por mes)
+    top_cant_moto = []
+    top_cant_accesorio = []
+    top_nombre_moto = []
+    top_nombre_accesorio = []
+
+    for (start, end) in month_ranges:
+        # Detalle de venta en rango
+        det = TblDetVenta.objects.filter(
+            venta__venta_fecha_venta__range=(start, end),
+            venta__venta_eliminado=False
+        ).select_related("prod", "venta")
+
+        # Agrupar por producto
+        sum_por_prod = defaultdict(int)
+        tipo_por_prod = {}
+        nombre_por_prod = {}
+        for d in det:
+            if not d.prod_id:
+                continue
+            sum_por_prod[d.prod_id] += int(d.det_venta_cantidad)
+            tipo_por_prod[d.prod_id] = (d.prod.prod_tipo or "").upper()
+            nombre_por_prod[d.prod_id] = d.prod.prod_nombre
+
+        # Encontrar max por tipo
+        max_moto, nombre_moto = 0, ""
+        max_acc, nombre_acc = 0, ""
+        for pid, cant in sum_por_prod.items():
+            tipo = tipo_por_prod.get(pid, "")
+            if tipo == "MOTO":
+                if cant > max_moto:
+                    max_moto = cant
+                    nombre_moto = nombre_por_prod.get(pid, "")
+            elif tipo == "ACCESORIO":
+                if cant > max_acc:
+                    max_acc = cant
+                    nombre_acc = nombre_por_prod.get(pid, "")
+
+        top_cant_moto.append(max_moto)
+        top_cant_accesorio.append(max_acc)
+        top_nombre_moto.append(nombre_moto)
+        top_nombre_accesorio.append(nombre_acc)
+
+    data = {
+        "labels_6m": labels,
+        "resumen": resumen_grid,
+        "barras_totales": barras_totales,
+        "stacked_por_tipo": {k: v for k, v in stacked_totales_por_tipo.items()},
+        "utilidades": utilidades,
+        "ventas_canal_tienda": ventas_canal_tienda,
+        "ventas_canal_online": ventas_canal_online,
+        "top_mes_moto": top_cant_moto,
+        "top_mes_accesorio": top_cant_accesorio,
+        "nombre_mes_moto": top_nombre_moto,
+        "nombre_mes_accesorio": top_nombre_accesorio,
+    }
+    return JsonResponse(data)
+
+# ---------- API: Estado de artículos (2.3) ----------
+def api_dashboard_state(request):
+    # Solo productos con Kardex
+    kardex = TblKardex.objects.select_related("prod").all()
+
+    estado_counts = {"agotado": 0, "por_agotar": 0, "ok": 0}
+    total_items = 0
+    detalle = []
+
+    for k in kardex:
+        total_items += 1
+        if k.kardex_stock_actual == 0:
+            estado = "agotado"
+        elif k.kardex_stock_actual <= k.kardex_stock_minimo:
+            estado = "por_agotar"
+        else:
+            estado = "ok"
+        estado_counts[estado] += 1
+        detalle.append({
+            "prod_id": k.prod_id,
+            "nombre": k.prod.prod_nombre,
+            "stock": k.kardex_stock_actual,
+            "minimo": k.kardex_stock_minimo,
+            "estado": estado,
+        })
+
+    percentages = {k: (round((v * 100.0 / total_items), 2) if total_items else 0) for k, v in estado_counts.items()}
+    data = {
+        "total": total_items,
+        "counts": estado_counts,
+        "percentages": percentages,
+        "detalle": detalle[:200],  # por si hay muchos; puedes paginar si deseas
+    }
+    return JsonResponse(data)
+
+# ---------- API: Filtro por rango (Sección 3) ----------
+def api_dashboard_filter(request):
+    start = request.GET.get("start")
+    end = request.GET.get("end")
+    if not start or not end:
+        return HttpResponseBadRequest("Parámetros 'start' y 'end' son requeridos (YYYY-MM-DD).")
+    try:
+        start_dt = timezone.make_aware(datetime.combine(parse_date(start).date(), datetime.min.time()))
+        end_dt = timezone.make_aware(datetime.combine(parse_date(end).date(), datetime.max.time()))
+    except Exception:
+        return HttpResponseBadRequest("Formato de fecha inválido. Use YYYY-MM-DD.")
+
+    if end_dt < start_dt:
+        return HttpResponseBadRequest("La fecha fin no puede ser menor que la fecha inicio.")
+
+    # KPIs
+    total_compras = TblEntrada.objects.filter(entrada_fecha__range=(start_dt, end_dt)) \
+        .aggregate(s=Sum("entrada_costo_total"))["s"] or 0
+    total_ventas = TblSalida.objects.filter(salida_fecha__range=(start_dt, end_dt), salida_eliminado=False) \
+        .aggregate(s=Sum("salida_costo_total"))["s"] or 0
+
+    util = 0.0
+    for s in TblSalida.objects.filter(salida_fecha__range=(start_dt, end_dt), salida_eliminado=False):
+        if s.salida_costo_total is None: continue
+        vt = float(s.salida_costo_total)
+        util += (vt - (vt / 1.2)) / 1.8
+
+    # Top 8 artículos más vendidos (por det_salida_cantidad)
+    det = TblDetSalida.objects.filter(
+        salida__salida_fecha__range=(start_dt, end_dt),
+        salida__salida_eliminado=False
+    ).select_related("prod", "salida")
+
+    cant_por_art = defaultdict(int)
+    for d in det:
+        if d.det_salida_cantidad:
+            cant_por_art[d.prod_id] += int(d.det_salida_cantidad)
+
+    top8 = sorted(cant_por_art.items(), key=lambda x: x[1], reverse=True)[:8]
+    # mapear nombres
+    nombres_map = dict(TblProducto.objects.filter(prod_id__in=[pid for pid, _ in top8]).values_list("prod_id", "prod_nombre"))
+    top8_labels = [nombres_map.get(pid, f"Prod {pid}") for pid, _ in top8]
+    top8_values = [qty for _, qty in top8]
+
+    # Ventas diarias (áreas apiladas: usaremos 1 serie con total; si quieres apilar por canal, se puede extender)
+    diarios_map = defaultdict(float)
+    salidas = TblSalida.objects.filter(salida_fecha__range=(start_dt, end_dt), salida_eliminado=False)
+    for s in salidas:
+        if s.salida_costo_total is None: continue
+        d = timezone.localtime(s.salida_fecha).date().isoformat()
+        diarios_map[d] += float(s.salida_costo_total)
+    dias = sorted(diarios_map.keys())
+    dias_values = [round(diarios_map[d], 2) for d in dias]
+
+    # Top 5 vendedores por número de ventas en rango
+    try:
+        id_cargo_vendedor = TblCargo.objects.get(cargo_id=F("cargo_id"), cargo_emp_descrip__iexact="Vendedor")
+    except:
+        id_cargo_vendedor = None
+    # Si no encontramos el cargo exacto, filtramos por texto
+    vendedores_ids = list(TblUsuario.objects.filter(Q(cargo__cargo_emp_descrip__iexact="Vendedor") | Q(cargo__cargo_emp_descrip__iexact="Administrador")).values_list("id", flat=True))
+    if not vendedores_ids:
+        vendedores_ids = list(TblUsuario.objects.filter(Q(cargo__cargo_emp_descrip__icontains="Vended") | Q(cargo__cargo_emp_descrip__icontains="Admin")).values_list("id", flat=True))
+
+    ventas_por_vendedor = (TblSalida.objects
+        .filter(salida_fecha__range=(start_dt, end_dt), salida_eliminado=False, usuario_id__in=vendedores_ids)
+        .values("usuario_id")
+        .annotate(n=Count("salida_id"))
+        .order_by("-n")[:5])
+
+    nombres_vendedores = dict(TblUsuario.objects.filter(id__in=[v["usuario_id"] for v in ventas_por_vendedor])
+                              .values_list("id", "username"))
+    top5_v_labels = [nombres_vendedores.get(v["usuario_id"], f"User {v['usuario_id']}") for v in ventas_por_vendedor]
+    top5_v_values = [v["n"] for v in ventas_por_vendedor]
+
+    # Pie 3D-like (cantidad artículos por tipo en rango)
+    det_sal = TblDetSalida.objects.filter(
+        salida__salida_fecha__range=(start_dt, end_dt),
+        salida__salida_eliminado=False
+    ).select_related("prod")
+
+    qty_tipo = {"MOTO": 0, "ACCESORIO": 0}
+    for d in det_sal:
+        t = (d.prod.prod_tipo or "").upper()
+        if t in qty_tipo:
+            qty_tipo[t] += int(d.det_salida_cantidad or 0)
+
+    # Donut: ventas por canal en rango
+    canal_tienda = TblSalida.objects.filter(salida_fecha__range=(start_dt, end_dt), salida_eliminado=False, salida_online=False).count()
+    canal_online = TblSalida.objects.filter(salida_fecha__range=(start_dt, end_dt), salida_eliminado=False, salida_online=True).count()
+
+    # Half-donut: online vs entregado
+    online_total = canal_online
+    online_entregado = TblSalida.objects.filter(
+        salida_fecha__range=(start_dt, end_dt), salida_eliminado=False, salida_online=True, salida_online_entregado=True
+    ).count()
+    online_pendiente = max(0, online_total - online_entregado)
+
+    data = {
+        "kpis": {
+            "compras": round(float(total_compras), 2),
+            "ventas": round(float(total_ventas), 2),
+            "utilidad": round(float(util), 2),
+        },
+        "top8": {
+            "labels": top8_labels,
+            "values": top8_values
+        },
+        "diarios": {
+            "labels": dias,
+            "values": dias_values
+        },
+        "top_vendedores": {
+            "labels": top5_v_labels,
+            "values": top5_v_values
+        },
+        "por_tipo": {
+            "labels": ["MOTO", "ACCESORIO"],
+            "values": [qty_tipo["MOTO"], qty_tipo["ACCESORIO"]]
+        },
+        "canal": {
+            "labels": ["Tienda", "Online"],
+            "values": [canal_tienda, canal_online]
+        },
+        "online_entrega": {
+            "labels": ["Entregado", "Pendiente"],
+            "values": [online_entregado, online_pendiente],
+            "total_online": online_total
+        }
+    }
+    return JsonResponse(data)
 
 def login_view(request):
     if request.method == 'POST':
