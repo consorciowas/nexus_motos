@@ -1464,8 +1464,7 @@ def agregar_venta(request):
                 mensaje_mysql = e.args[1]
 
             messages.error(request, f"Ocurrió un error: {mensaje_mysql}")
-            return redirect("agregar_venta")
-            
+            return redirect("agregar_venta")       
     else:
         # Vista GET: cargar formulario
         clientes = TblCliente.objects.all()
@@ -1817,14 +1816,16 @@ def filtrar_compras(request):
 @solo_personal
 def reporte_salidas(request):
     clientes = TblCliente.objects.all()
-    almacenistas = TblUsuario.objects.filter(cargo__cargo_emp_descrip='Almacenero')
+    registradores = TblUsuario.objects.filter(
+        cargo__cargo_emp_descrip__in=['Almacenero', 'Administrador', 'Vendedor']
+    )
     
     context = {
         'breadcrumbs': [['Reporte salidas', '']],
         'menu_padre': 'reportes',
         'menu_hijo': 'reporte_salidas',
         'clientes': clientes,
-        'almacenistas': almacenistas,
+        'registradores': registradores,
     }
 
     return render(request, 'tienda/reporte_salidas.html', context)
@@ -1853,7 +1854,7 @@ def filtrar_salidas(request):
     for c in salidas:
         data.append({
             'fecha': c.salida_fecha.strftime('%Y-%m-%d'),
-            'usuario': c.usuario.usuario_nombre,
+            'usuario': f"{c.usuario.usuario_nombre} {c.usuario.usuario_paterno}",
             'tipo_doc': c.tipo_doc_almacen.tipo_doc_almacen_descripcion,
             'numero_doc': c.salida_num_doc,
             'motivo': c.salida_motivo,
@@ -1889,10 +1890,6 @@ def buscar_movimientos(request):
         fecha_fin = request.POST.get('fecha_fin')
         producto_id = request.POST.get('producto_id')
 
-        print(fecha_inicio)
-        print(fecha_fin)
-        print(producto_id)
-
         filtro_fecha = Q()
         if fecha_inicio:
             filtro_fecha &= Q(det_entrada__entrada__entrada_fecha__gte=fecha_inicio) | Q(det_salida__salida__salida_fecha__gte=fecha_inicio)
@@ -1900,13 +1897,11 @@ def buscar_movimientos(request):
             filtro_fecha &= Q(det_entrada__entrada__entrada_fecha__lte=fecha_fin) | Q(det_salida__salida__salida_fecha__lte=fecha_fin)
 
         productos = TblProducto.objects.filter(tbldetentrada__isnull=False).distinct()
-        print(productos)
         
         if producto_id and producto_id != '0':
             productos = productos.filter(prod_id=producto_id)
 
         for producto in productos:
-            print(producto)
             movimientos = []
 
             # ENTRADAS
@@ -1916,9 +1911,7 @@ def buscar_movimientos(request):
             if fecha_fin:
                 entradas = entradas.filter(entrada__entrada_fecha__date__lte=fecha_fin)
 
-            print(entradas)
             for e in entradas:
-                print(e.entrada.entrada_fecha)
                 movimientos.append({
                     'fecha_mov': e.entrada.entrada_fecha,
                     'tipo_mov': 'ENTRADA',
@@ -1930,7 +1923,6 @@ def buscar_movimientos(request):
                     'precio_salida': 0,
                 })
 
-            print(movimientos)
 
             # SALIDAS
             salidas = TblDetSalida.objects.filter(prod_id=producto)
@@ -1951,7 +1943,6 @@ def buscar_movimientos(request):
                     'precio_salida': float(s.det_salida_precio_salida),
                 })
 
-            print(movimientos)
             # Ordenamos todos los movimientos por fecha
             movimientos.sort(key=lambda x: x['fecha_mov'])
 

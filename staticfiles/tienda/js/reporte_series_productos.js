@@ -24,8 +24,9 @@ $(document).ready(function () {
             { data: 'num_doc_salida' },
             { data: 'tipo_doc_salida' }
         ],
-        // Desactivar orden inicial para que no mueva las filas separadoras
-        order: [],
+        order: [], // Desactivar orden inicial
+        searching: false, // Quitar el buscador
+        ordering: false,  // Quitar el ordenamiento por columnas
         rowCallback: function (row, data, index) {
             if (data.separador) {
                 // Reemplaza completamente la fila con el separador
@@ -48,6 +49,9 @@ $(document).ready(function () {
         const fecha_fin = $('#fecha_fin').val();
         const producto_id = $('#producto_id').val();
 
+        $('#spinner').removeClass("d-none");
+        $('#btnBuscar').prop("disabled", true);
+
         $.ajax({
             url: '/buscar_series_productos/',
             type: 'POST',
@@ -61,6 +65,10 @@ $(document).ready(function () {
                 alert('Ocurrió un error al buscar.');
                 console.log(err);
             }
+        })
+        .always(function () {
+            $('#spinner').addClass("d-none");
+            $('#btnBuscar').prop("disabled", false);
         });
     });
 });

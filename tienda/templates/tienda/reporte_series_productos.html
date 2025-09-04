@@ -18,47 +18,63 @@
               </div>
             </div>
             <div class="card-body">
-              
                 {% csrf_token %}
-                <div class="row mb-3">
-                  <div class="col-md-3">
-                    <label>Fecha Inicio:</label>
-                    <input type="date" id="fecha_inicio" class="form-control">
-                  </div>
-                  <div class="col-md-3">
-                    <label>Fecha Fin:</label>
-                    <input type="date" id="fecha_fin" class="form-control">
-                  </div>
-                  <div class="col-md-4">
-                    <label>Producto:</label>
-                    <select id="producto_id" class="form-control">
-                      <option value="0">TODOS</option>
-                      {% for p in productos %}
-                        <option value="{{ p.prod_id }}">{{ p.prod_modelo }} - {{ p.prod_marca }}</option>
-                      {% endfor %}
-                    </select>
-                  </div>
-                  <div class="col-md-2 d-flex align-items-end">
-                    <button id="btnBuscar" class="btn btn-primary btn-block" >Buscar</button>
+                <div class="row">
+                  <div class="col-12 mb-4 order-0">
+                    <div class="row g-3">
+                      <div class="col-sm-12 col-md-3 col-lg-3">
+                        <div class="form-group">
+                          <label class="form-label">Fecha Inicio:</label>
+                          <input type="date" id="fecha_inicio" class="form-control">
+                        </div>
+                      </div>
+                      <div class="col-sm-12 col-md-3 col-lg-3">
+                        <div class="form-group">
+                          <label class="form-label">Fecha Fin:</label>
+                          <input type="date" id="fecha_fin" class="form-control">
+                        </div>
+                      </div>
+                      <div class="col-sm-12 col-md-4 col-lg-4">
+                        <div class="form-group">
+                          <label class="form-label">Producto:</label>
+                          <select id="producto_id" class="form-control">
+                            <option value="0">TODOS</option>
+                            {% for p in productos %}
+                              <option value="{{ p.prod_id }}">{{ p.prod_modelo }} - {{ p.prod_marca }}</option>
+                            {% endfor %}
+                          </select>
+                        </div>
+                      </div>
+                      <div class="col-sm-12 col-md-2 col-lg-2 d-flex align-items-end justify-content-end">
+                        <button id="btnBuscar" class="btn btn-primary mt-3">
+                          <span id="spinner" class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
+                          Buscar
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              
-
-                <table id="tablaSeries" class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th>CÓDIGO SERIE</th>
-                            <th>SITUACIÓN</th>
-                            <th>FECHA ENTRADA</th>
-                            <th>NUM. DOC ENTRADA</th>
-                            <th>TIPO DOC. ENTRADA</th>
-                            <th>FECHA SALIDA</th>
-                            <th>NUM DOC. SALIDA</th>
-                            <th>TIPO DOC. SALIDA</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+                <div class="row">
+                  <div class="col-12 mb-4 order-0">
+                    <div class="table-responsive text-nowrap">
+                      <table id="tablaSeries" class="table table-bordered w-100">
+                        <thead class="table-primary">
+                          <tr>
+                            <th class="text-center">CÓDIGO SERIE</th>
+                            <th class="text-center">SITUACIÓN</th>
+                            <th class="text-center">FECHA ENTRADA</th>
+                            <th class="text-center">NUM. DOC ENTRADA</th>
+                            <th class="text-center">TIPO DOC. ENTRADA</th>
+                            <th class="text-center">FECHA SALIDA</th>
+                            <th class="text-center">NUM DOC. SALIDA</th>
+                            <th class="text-center">TIPO DOC. SALIDA</th>
+                          </tr>
+                        </thead>
+                        <tbody></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
             </div>
         </div>
     </div>

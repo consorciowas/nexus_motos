@@ -47,8 +47,13 @@
                     <div class="col-12 col-md-4 mb-2">
                         <strong>Fecha Registro:</strong> {{ venta.venta_fecha_venta|date:"d/m/Y H:i:s" }}
                     </div>
+                    <div class="col-12 col-md-4 mb-2 text-end">
+                        <a href="#" class="btn btn-sm btn-primary" onclick="abrirComprobante({{ venta.venta_id }}); return false;">
+                            Comprobante <span class="tf-icon bx bx-printer bx-18px ms-1"></span>
+                        </a>
+                    </div>
                 </div>
-                <hr>
+                <hr style="margin-top: 0px;">
                 <div class="row">
                     <div class="col-md-12">
                         <h5><strong>Artículos</strong></h5>
@@ -201,6 +206,13 @@
 {% block extra_js %}
 <script>
     const csrfToken = "{{ csrf_token }}";
+    function abrirComprobante(ventaId) {
+        const pdfUrl = `/venta/pdf/${ventaId}/`;
+        const ventana = window.open(pdfUrl, '_blank');
+        ventana.onload = function() {
+            ventana.print();
+        }
+    }
 </script>
 <!-- SweetAlert2 -->
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

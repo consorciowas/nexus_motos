@@ -13,7 +13,10 @@ const getCookie = (name) => {
     return cookieValue;
 }
 
-document.getElementById('btnBuscar').addEventListener('click', function(e) {
+const spinner = document.getElementById('spinner');
+const btnBuscar = document.getElementById('btnBuscar');
+
+btnBuscar.addEventListener('click', function(e) {
     e.preventDefault();
     const fd = new FormData();
     fd.append('fecha_inicio', document.getElementById('fecha_inicio').value);
@@ -21,6 +24,9 @@ document.getElementById('btnBuscar').addEventListener('click', function(e) {
     fd.append('producto_id', document.getElementById('producto_id').value);
 
     const url = this.dataset.url;
+
+    spinner.classList.remove("d-none");
+    btnBuscar.disabled = true;
 
     fetch(url, {
         method: 'POST',
@@ -63,5 +69,12 @@ document.getElementById('btnBuscar').addEventListener('click', function(e) {
                 ordering: false
             });
         });
+    })
+    .catch(error => {
+        console.error("Error al buscar mov. productos:", error);
+    })
+    .finally(() => {
+        spinner.classList.add("d-none");
+        btnBuscar.disabled = false;
     });
 });

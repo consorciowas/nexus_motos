@@ -24,19 +24,19 @@
                         <form id="form-filtros" method="post" enctype="multipart/form-data">
                             {% csrf_token %}
                             <div class="row g-3">
-                                <div class="col-sm-12 col-md-6 col-lg-3 mb-3">
+                                <div class="col-sm-12 col-md-6 col-lg-2">
                                     <div class="form-group">
                                         <label for="fecha_inicio" class="form-label">Desde:</label>
                                         <input type="date" class="form-control" name="fecha_inicio" id="fecha_inicio">
                                     </div>
                                 </div>
-                                <div class="col-sm-12 col-md-6 col-lg-3 mb-3">
+                                <div class="col-sm-12 col-md-6 col-lg-2">
                                     <div class="form-group">
                                         <label for="fecha_fin" class="form-label">Hasta:</label>
                                         <input type="date" class="form-control" name="fecha_fin" id="fecha_fin">
                                     </div>
                                 </div>
-                                <div class="col-sm-12 col-md-6 col-lg-3 mb-3">
+                                <div class="col-sm-12 col-md-6 col-lg-3">
                                     <div class="form-group">
                                         <label for="proveedor" class="form-label">Proveedor:</label>
                                         <select class="form-select" name="proveedor" id="proveedor">
@@ -47,7 +47,7 @@
                                         </select>
                                     </div>
                                 </div>
-                                <div class="col-sm-12 col-md-6 col-lg-3 mb-3">
+                                <div class="col-sm-12 col-md-6 col-lg-3">
                                     <div class="form-group">
                                         <label for="usuario" class="form-label">Registrado por:</label>
                                         <select class="form-select" name="usuario" id="usuario">
@@ -58,11 +58,9 @@
                                         </select>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="row g-3">
-                                <div class="col-sm-12 col-md-12 col-lg-12 mb-3 d-flex justify-content-end">
-                                    <button type="submit" id="btn-buscar" class="btn btn-primary mt-3">
-                                        <span id="spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                <div class="col-sm-12 col-md-12 col-lg-2 d-flex align-items-end justify-content-end">
+                                    <button type="submit" id="btn-buscar" class="btn btn-primary">
+                                        <span id="spinner" class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
                                         Buscar
                                     </button>
                                 </div>

@@ -24,34 +24,32 @@
                         <form id="form-filtros" method="post" enctype="multipart/form-data">
                             {% csrf_token %}
                             <div class="row g-3">
-                                <div class="col-sm-12 col-md-4 col-lg-4 mb-3">
+                                <div class="col-sm-12 col-md-3 col-lg-3">
                                     <div class="form-group">
                                         <label for="fecha_inicio" class="form-label">Desde:</label>
                                         <input type="date" class="form-control" name="fecha_inicio" id="fecha_inicio">
                                     </div>
                                 </div>
-                                <div class="col-sm-12 col-md-4 col-lg-4 mb-3">
+                                <div class="col-sm-12 col-md-3 col-lg-3">
                                     <div class="form-group">
                                         <label for="fecha_fin" class="form-label">Hasta:</label>
                                         <input type="date" class="form-control" name="fecha_fin" id="fecha_fin">
                                     </div>
                                 </div>
-                                <div class="col-sm-12 col-md-4 col-lg-4 mb-3">
+                                <div class="col-sm-12 col-md-4 col-lg-4">
                                     <div class="form-group">
                                         <label for="usuario" class="form-label">Registrado por:</label>
                                         <select class="form-select" name="usuario" id="usuario">
                                             <option value="">-- Todos --</option>
-                                            {% for usuario in almacenistas %}
-                                                <option value="{{ usuario.id }}">{{ usuario.usuario_nombre }}</option>
+                                            {% for usuario in registradores %}
+                                                <option value="{{ usuario.id }}">{{ usuario.usuario_nombre }} {{ usuario.usuario_paterno }}</option>
                                             {% endfor %}
                                         </select>
                                     </div>
                                 </div>
-                            </div>
-                            <div class="row g-3">
-                                <div class="col-sm-12 col-md-12 col-lg-12 mb-3 d-flex justify-content-end">
+                                <div class="col-sm-12 col-md-2 col-lg-2 d-flex align-items-end justify-content-end">
                                     <button type="submit" id="btn-buscar" class="btn btn-primary mt-3">
-                                        <span id="spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                        <span id="spinner" class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
                                         Buscar
                                     </button>
                                 </div>

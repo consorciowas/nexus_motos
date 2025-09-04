@@ -20,17 +20,17 @@
             <div class="card-body">
               <form enctype="multipart/form-data" method="post">
                 {% csrf_token %}
-                <div class="row mb-3">
+                <div class="row g-3 mb-3">
                   <div class="col-md-3">
-                    <label>Fecha Inicio:</label>
+                    <label class="form-label">Fecha Inicio:</label>
                     <input type="date" id="fecha_inicio" class="form-control">
                   </div>
                   <div class="col-md-3">
-                    <label>Fecha Fin:</label>
+                    <label class="form-label">Fecha Fin:</label>
                     <input type="date" id="fecha_fin" class="form-control">
                   </div>
                   <div class="col-md-4">
-                    <label>Producto:</label>
+                    <label class="form-label">Producto:</label>
                     <select id="producto_id" class="form-control">
                       <option value="0">TODOS</option>
                       {% for p in productos %}
@@ -38,8 +38,11 @@
                       {% endfor %}
                     </select>
                   </div>
-                  <div class="col-md-2 d-flex align-items-end">
-                    <button id="btnBuscar" class="btn btn-primary btn-block" data-url="{% url 'buscar_movimientos' %}">Buscar</button>
+                  <div class="col-md-2 d-flex align-items-end justify-content-end">
+                    <button id="btnBuscar" class="btn btn-primary btn-block" data-url="{% url 'buscar_movimientos' %}">
+                      <span id="spinner" class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
+                      Buscar
+                    </button>
                   </div>
                 </div>
               </form>
