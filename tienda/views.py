@@ -435,7 +435,7 @@ def login_view(request):
                         
                         try:
                             cliente = TblCliente.objects.get(usuario=user)
-                            request.session['cliente_id'] = cliente.id
+                            request.session['cliente_id'] = cliente.cliente_id
                         except TblCliente.DoesNotExist:
                             request.session['cliente_id'] = None
 
