@@ -54,7 +54,7 @@
                                             <span>{{ producto.stock_actual }}</span>
                                             {% if producto.stock_actual == 0 %}
                                                 <span class="badge bg-label-danger me-1 badge-stock">Agotado</span>
-                                            {% elif producto.stock_actual <= 5 %}
+                                            {% elif producto.stock_actual <= producto.stock_minimo %}
                                                 <span class="badge bg-label-warning me-1 badge-stock">Por agotar</span>
                                             {% else %}
                                                 <span class="badge bg-label-success me-1 badge-stock">Disponible</span> <!-- badge bg-success text-white ms-2  -->

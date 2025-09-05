@@ -178,7 +178,7 @@ def api_dashboard_overview(request):
         online_n = 0
         for v in ventas_mes:
             vt = float(v.venta_total)
-            u = (vt - (vt / 1.2)) / 1.8
+            u = (vt - (vt / 1.2)) / 1.18
             util += u
             if v.venta_online:
                 online_n += 1
@@ -306,7 +306,7 @@ def api_dashboard_filter(request):
     for s in TblSalida.objects.filter(salida_fecha__range=(start_dt, end_dt), salida_eliminado=False):
         if s.salida_costo_total is None: continue
         vt = float(s.salida_costo_total)
-        util += (vt - (vt / 1.2)) / 1.8
+        util += (vt - (vt / 1.2)) / 1.18
 
     # Top 8 artículos más vendidos (por det_salida_cantidad)
     det = TblDetSalida.objects.filter(
@@ -627,8 +627,10 @@ def lista_articulos(request):
         producto.descuento_porcentaje = int(producto.prod_porcenta_dcto or 0)
         if hasattr(producto, 'tblkardex'):
             producto.stock_actual = producto.tblkardex.kardex_stock_actual
+            producto.stock_minimo = producto.tblkardex.kardex_stock_minimo
         else:
             producto.stock_actual = 0
+            producto.stock_minimo = 0
 
     context = {
         'breadcrumbs': [['Artículos', '']],
