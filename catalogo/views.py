@@ -887,7 +887,7 @@ def cliente_registrar(request: HttpRequest):
     # Guardamos para luego avisar en email tras el pago
     request.session['cliente_nuevo_pwd'] = password_plano
     # Guardar en sesión el id del cliente recién creado
-    request.session['cliente_id'] = nuevo_cliente.id
+    request.session['cliente_id'] = nuevo_cliente.cliente_id
     request.session.modified = True
 
     return _ok({'existed': False})
